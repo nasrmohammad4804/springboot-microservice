@@ -1,0 +1,20 @@
+
+server:
+  port: 8080
+spring:
+  application:
+    name: product-service
+  r2dbc:
+    username: postgres
+    password: MohammadN@sr13804804
+    url: r2dbc:postgresql://${DB_HOST:localhost}:5432/microservice-ecommerce?schema=product
+# if DB_HOST environment variable use that otherwise use localhost instead
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka
+logging:
+  level:
+    io.r2dbc.postgresql.QUERY: DEBUG
+    io.r2dbc.postgresql.PARAM: DEBUG
