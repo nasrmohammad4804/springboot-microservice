@@ -1,4 +1,3 @@
-
 server:
   port: 8080
 spring:
@@ -10,10 +9,18 @@ spring:
     url: r2dbc:postgresql://${DB_HOST:localhost}:5432/microservice-ecommerce?schema=product
 # if DB_HOST environment variable use that otherwise use localhost instead
 
+# by default eureka.client.enable= true then you dont need to use @EnableEurekaClient
+# and also eureka.client.fetch-registry=true mean this client able to get data from eureka server
+#and also eureka.client.register-with-eureka=true means this client able register to eureka server
+
 eureka:
+  instance:
+    prefer-ip-address: true
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: ${EUREKA_SERVER_URI:http://localhost:8761/eureka}
+    fetch-registry: true
+    register-with-eureka: true
 logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG
