@@ -2,11 +2,11 @@ server:
   port: 8080
 spring:
   application:
-    name: product-service
+    name: PRODUCT-SERVICE
   r2dbc:
     username: postgres
     password: MohammadN@sr13804804
-    url: r2dbc:postgresql://${DB_HOST:localhost}:5432/microservice-ecommerce?schema=product
+    url: r2dbc:postgresql://${DB_HOST:localhost}:5432/microservice-ecommerce?schema=product_schema
 # if DB_HOST environment variable use that otherwise use localhost instead
 
 # by default eureka.client.enable= true then you dont need to use @EnableEurekaClient

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 
 import java.io.Serializable;
 
@@ -17,5 +18,6 @@ public abstract class BaseEntity<ID extends Serializable> implements Serializabl
     @Id
     protected ID id;
 
+    @Transient
     protected Boolean isDeleted;
 }
