@@ -25,6 +25,12 @@ public class RestResponseEntityExceptionHandler  {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(false,e.getMessage()));
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> genericExceptionHandler(Exception e){
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(false,e.getMessage()));
+    }
 }
 
 @Data
