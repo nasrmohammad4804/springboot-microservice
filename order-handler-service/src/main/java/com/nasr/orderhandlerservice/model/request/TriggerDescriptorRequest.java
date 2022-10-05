@@ -37,7 +37,7 @@ public class TriggerDescriptorRequest {
     public Trigger buildTrigger(){
         return newTrigger()
                 .withIdentity(buildName(),group)
-                .startAt(futureDate(3, DateBuilder.IntervalUnit.MINUTE))
+                .startAt(futureDate(hour, DateBuilder.IntervalUnit.HOUR))
                 .build();
 
     }
