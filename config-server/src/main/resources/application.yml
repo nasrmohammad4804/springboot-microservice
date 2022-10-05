@@ -1,1 +1,16 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: CONFIG-SERVER
+  profiles:
+    active: git
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/nasrmohammad4804/springboot-microservice.git
+          search-paths:
+            config-server/src/main/resources/config/
 
