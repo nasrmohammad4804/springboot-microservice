@@ -10,5 +10,3 @@ create table if not exists payment_schema.payment_table
     order_id       bigint unique references order_schema.order_table (id)
 );
 
-
-drop type payment_schema.status;
