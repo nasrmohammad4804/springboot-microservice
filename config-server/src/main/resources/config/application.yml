@@ -15,3 +15,9 @@ spring:
         max-attempts: 40
         max-interval: 1500
         initial-interval: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
