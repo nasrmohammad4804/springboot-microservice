@@ -4,8 +4,6 @@ server:
 spring:
   application:
     name: CONFIG-SERVER
-  profiles:
-    active: git
   cloud:
     config:
       server:
@@ -13,4 +11,5 @@ spring:
           uri: https://github.com/nasrmohammad4804/springboot-microservice.git
           search-paths:
             config-server/src/main/resources/config/
-
+          clone-on-start: true
+          default-label: master
