@@ -28,7 +28,7 @@ public class ProductController {
     @Autowired
     private ProductMapper productMapper;
 
-    @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PostMapping
     public Mono<ResponseEntity<ProductResponse>> addProduct(@RequestBody @Valid ProductRequest dto) {
         Product product = productMapper.convertViewToEntity(dto);
         return productService.saveOrUpdate(product)

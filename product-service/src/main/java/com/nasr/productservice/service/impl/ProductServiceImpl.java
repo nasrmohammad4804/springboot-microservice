@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.Comparator;
 import java.util.List;
@@ -67,27 +66,25 @@ public class ProductServiceImpl extends BaseServiceImpl<Product, ProductResponse
                 .map(DecreaseProductQuantityRequest::getProductId).toList();
 
         Flux<Product> products = repository.findAllById(ids);
-        return products.doOnNext(product -> {
-                    dtos.stream().filter(dto -> dto.getProductId().equals(product.getId()))
-                            .findFirst()
-                            .ifPresent(decreaseProductQuantityRequestDto -> {
-                                Long quantity = product.getQuantity();
-                                product.setQuantity(quantity - decreaseProductQuantityRequestDto.getProductNumber());
 
-                            });
-                })
-                .onErrorMap(e -> new IllegalStateException(e.getMessage()))
-                .collectList()
-                .publishOn(Schedulers.boundedElastic())
-                .doOnNext(productList -> repository.saveAll(productList).subscribe())
-                .map(productList -> Boolean.TRUE)
-                .log();
+        return Flux.fromIterable(dtos)
+                .flatMap(dto -> products.filter(product -> product.getId().equals(dto.getProductId()))
+                        .switchIfEmpty(Mono.error(new ProductNotFoundException("dont find product with id : " + dto.getProductId())))
+                        .next()
+                        .flatMap(product -> {
+                            if (product.getQuantity() < dto.getProductNumber())
+                                return Mono.error(new ProductNotValidException("product quantity is sufficient"));
+
+                            product.setQuantity(product.getQuantity() - dto.getProductNumber());
+                            return repository.save(product);
+                        }))
+                .then(Mono.just(Boolean.TRUE));
     }
 
     @Override
     public Mono<Boolean> revertProducts(List<RevertProductRequest> revertProductRequests) {
 
-        revertProductRequests  =revertProductRequests.stream()
+        revertProductRequests = revertProductRequests.stream()
                 .sorted(Comparator.comparing(RevertProductRequest::getProductId))
                 .collect(Collectors.toList());
 
