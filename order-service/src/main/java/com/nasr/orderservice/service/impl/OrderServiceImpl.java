@@ -2,7 +2,6 @@ package com.nasr.orderservice.service.impl;
 
 import com.nasr.orderservice.base.mapper.BaseMapper;
 import com.nasr.orderservice.base.service.impl.BaseServiceImpl;
-import com.nasr.orderservice.constant.ConstantField;
 import com.nasr.orderservice.domain.Order;
 import com.nasr.orderservice.domain.enumeration.OrderStatus;
 import com.nasr.orderservice.dto.request.*;
@@ -13,13 +12,9 @@ import com.nasr.orderservice.exception.OrderNotValidException;
 import com.nasr.orderservice.repository.OrderRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import com.nasr.orderservice.service.OrderService;
-import lombok.NonNull;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.scheduling.Trigger;
-import org.springframework.scheduling.support.SimpleTriggerContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -69,21 +64,9 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     public Mono<OrderPlaceResponse> saveOrUpdate(OrderRequest orderRequest) {
         log.info("placing order request: {} ", orderRequest);
 
-        List<Long> productIds = orderRequest.getOrderPlaceRequestDtoList()
-                .stream()
-                .map(OrderPlaceRequest::getProductId).toList();
-
-        Flux<ProductResponse> products = webClient.build()
-                .get()
-                .uri(uriBuilder -> uriBuilder.path("/api/v1/product/all")
-                        .host("PRODUCT-SERVICE")
-                        .queryParam("id", productIds).build())
-                .retrieve()
-                .bodyToFlux(ProductResponse.class);
-
-        return isPlaceOrderValid(orderRequest.getOrderPlaceRequestDtoList(), products)
+        return decreaseProductQuantity(getDecreaseProductQuantities(orderRequest.getOrderPlaceRequestDtoList()))
+                .onErrorMap(e -> new IllegalStateException(e.getMessage()))
                 .flatMap(result -> {
-
                     Order order = Order.builder()
                             .orderDate(LocalDateTime.now())
                             .totalPrice(orderRequest.getTotalPrice())
@@ -99,10 +82,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                                         .collectList().zipWith(Mono.just(o));
 
                             });
-
-                })
-                .doOnNext(tuples2 -> decreaseProductQuantity(tuples2.getT1()))
-                .map(tuples2 -> {
+                }).map(tuples2 -> {
 
                     OrderPlaceResponse orderPlaceResponseDto = new OrderPlaceResponse();
                     orderPlaceResponseDto.setOrderDate(tuples2.getT2().getOrderDate());
@@ -113,6 +93,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                     return orderPlaceResponseDto;
                 })
                 .doOnNext(this::createOrderHandler);
+
 //        we place order and reduce quantity of specific product from stock
 //        but after that if customer less than 1 hour move to payment and pay the order is ok
 //        otherwise we cancelled order and revert  product ordered to stock
@@ -135,56 +116,32 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/orderPlaceHandler/groups/" + ORDER_HANDLER_GROUP_NAME + "/jobs")
                         .host("ORDER-HANDLER-SERVICE")
                         .build())
-                .body(Mono.just(descriptorRequest),JobDescriptorRequest.class)
+                .body(Mono.just(descriptorRequest), JobDescriptorRequest.class)
                 .retrieve()
                 .bodyToMono(JobDescriptorRequest.class)
                 .subscribe();
     }
 
-    private void decreaseProductQuantity(List<OrderDetailResponse> orderDetailResponseDtos) {
-        webClient.build()
+    private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests) {
+        return webClient.build()
                 .put()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/product/decreaseQuantity")
                         .host("PRODUCT-SERVICE")
                         .build())
-                .body(Flux.fromIterable(getDecreaseProductQantities(orderDetailResponseDtos)), DecreaseProductQuantityRequest.class)
+                .body(Flux.fromIterable(decreaseProductQuantityRequests), DecreaseProductQuantityRequest.class)
                 .retrieve()
                 .bodyToMono(Boolean.class)
-                .subscribe();
-
-
+                .log();
     }
 
-    private List<DecreaseProductQuantityRequest> getDecreaseProductQantities(List<OrderDetailResponse> orderDetailResponseDtos) {
+    private List<DecreaseProductQuantityRequest> getDecreaseProductQuantities(List<OrderPlaceRequest> orderPlaceRequests) {
         List<DecreaseProductQuantityRequest> dtos = new ArrayList<>();
-        orderDetailResponseDtos.forEach(orderDetailResponseDto -> {
+        orderPlaceRequests.forEach(orderDetailResponseDto -> {
             DecreaseProductQuantityRequest dto = new DecreaseProductQuantityRequest();
             BeanUtils.copyProperties(orderDetailResponseDto, dto);
             dtos.add(dto);
         });
         return dtos;
-    }
-
-    private Mono<Boolean> isPlaceOrderValid(List<OrderPlaceRequest> orderPlaceRequestDtoList, Flux<ProductResponse> products) {
-
-        return Flux.fromIterable(orderPlaceRequestDtoList)
-                .flatMap(
-                        orderPlaceRequestDto -> products.collectList()
-                                .map(productList -> {
-                                    Optional<ProductResponse> responseDtoOptional = productList.stream().filter(product -> product.getId().equals(orderPlaceRequestDto.getProductId()))
-                                            .findAny();
-
-                                    if (responseDtoOptional.isPresent() && orderPlaceRequestDto.getProductNumber() > responseDtoOptional.get().getQuantity())
-                                        throw new OrderNotValidException("this number of product dont exists");
-
-                                    else if (responseDtoOptional.isEmpty())
-                                        throw new EntityNotFoundException("dont find any product with id : " + orderPlaceRequestDto.getProductId());
-                                    return true;
-                                }))
-                .collectList()
-                .map(results -> Boolean.TRUE)
-                .log();
-
     }
 
     @Override
