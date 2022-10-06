@@ -9,14 +9,9 @@ spring:
     username: postgres
     password: MohammadN@sr13804804
 
-eureka:
-  instance:
-    prefer-ip-address: true
-  client:
-    register-with-eureka: true
-    fetch-registry: true
-    serviceUrl:
-      defaultZone: ${EUREKA_SERVER_URI:http://localhost:8761/eureka}
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
+
 logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG
