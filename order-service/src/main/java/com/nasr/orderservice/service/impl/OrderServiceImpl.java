@@ -178,7 +178,6 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                         .host("PAYMENT-SERVICE")
                         .build())
                 .retrieve()
-                .onStatus(HttpStatus.NOT_FOUND::equals,clientResponse -> clientResponse.bodyToMono(String.class).map(EntityNotFoundException::new))
                 .bodyToMono(PaymentResponse.class)
                 .defaultIfEmpty(new PaymentResponse())
                 .log();
