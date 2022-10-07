@@ -6,15 +6,14 @@ import com.nasr.orderservice.domain.Order;
 import com.nasr.orderservice.domain.enumeration.OrderStatus;
 import com.nasr.orderservice.dto.request.*;
 import com.nasr.orderservice.dto.response.*;
-import com.nasr.orderservice.exception.EntityNotFoundException;
-import com.nasr.orderservice.exception.OrderNotFoundException;
-import com.nasr.orderservice.exception.OrderNotValidException;
+import com.nasr.orderservice.exception.*;
 import com.nasr.orderservice.repository.OrderRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import com.nasr.orderservice.service.OrderService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -22,7 +21,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_DEFAULT_HOUR;
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_GROUP_NAME;
@@ -65,7 +66,6 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
         log.info("placing order request: {} ", orderRequest);
 
         return decreaseProductQuantity(getDecreaseProductQuantities(orderRequest.getOrderPlaceRequestDtoList()))
-                .onErrorMap(e -> new IllegalStateException(e.getMessage()))
                 .flatMap(result -> {
                     Order order = Order.builder()
                             .orderDate(LocalDateTime.now())
@@ -130,6 +130,8 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                         .build())
                 .body(Flux.fromIterable(decreaseProductQuantityRequests), DecreaseProductQuantityRequest.class)
                 .retrieve()
+                .onStatus(HttpStatus::isError, clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
+                        .map(error -> new ExternalServiceException(error.getMessage(), clientResponse.statusCode())))
                 .bodyToMono(Boolean.class)
                 .log();
     }
