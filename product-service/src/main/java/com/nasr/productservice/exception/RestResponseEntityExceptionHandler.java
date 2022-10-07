@@ -17,19 +17,19 @@ public class RestResponseEntityExceptionHandler  {
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> entityNotFoundExceptionHandler(EntityNotFoundException e){
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ErrorResponse(false,e.getMessage()));
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND,e.getMessage()));
     }
 
     @ExceptionHandler(EntityNotValidException.class)
     public ResponseEntity<ErrorResponse> entityNotValidExceptionHandler(EntityNotValidException e){
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(false,e.getMessage()));
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST,e.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> genericExceptionHandler(Exception e){
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse(false,e.getMessage()));
+                .body(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,e.getMessage()));
     }
 }
 
@@ -38,6 +38,6 @@ public class RestResponseEntityExceptionHandler  {
 @AllArgsConstructor
 @Builder
 class ErrorResponse {
-    private boolean success;
+    private HttpStatus errorCode;
     private String message;
 }
