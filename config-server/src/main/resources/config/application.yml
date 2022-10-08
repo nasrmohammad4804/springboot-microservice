@@ -8,6 +8,9 @@ eureka:
     register-with-eureka: true
 
 spring:
+  zipkin:
+    base-url: ${ZIPKIN_SERVER_URI:http://localhost:9411/}
+
   cloud:
     config:
       fail-fast: true
