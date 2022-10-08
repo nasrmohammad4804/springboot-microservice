@@ -1,7 +1,7 @@
 package com.nasr.paymentservice.service.impl;
 
 import com.nasr.paymentservice.base.service.impl.BaseServiceImpl;
-import com.nasr.paymentservice.domain.Payment;
+import com.nasr.paymentservice.domain.Transaction;
 import com.nasr.paymentservice.domain.enumeration.PaymentStatus;
 import com.nasr.paymentservice.dto.request.PaymentRequest;
 import com.nasr.paymentservice.dto.response.PaymentResponse;
@@ -12,9 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
+
 @Service
 @Transactional(readOnly = true)
-public class PaymentServiceImpl extends BaseServiceImpl<Payment, Long, PaymentRepository, PaymentResponse, PaymentRequest>
+public class PaymentServiceImpl extends BaseServiceImpl<Transaction, Long, PaymentRepository, PaymentResponse, PaymentRequest>
         implements PaymentService {
 
     public PaymentServiceImpl(PaymentRepository repository, PaymentMapper mapper) {
@@ -22,8 +24,8 @@ public class PaymentServiceImpl extends BaseServiceImpl<Payment, Long, PaymentRe
     }
 
     @Override
-    public Class<Payment> getEntityClass() {
-        return Payment.class;
+    public Class<Transaction> getEntityClass() {
+        return Transaction.class;
     }
 
     @Override
@@ -31,10 +33,11 @@ public class PaymentServiceImpl extends BaseServiceImpl<Payment, Long, PaymentRe
     public Mono<PaymentResponse> saveOrUpdate(PaymentRequest paymentRequest) {
         // can pay order by third party service with cardNumber and cvv2 etc ...  we mocked this section
         //and if third party do payment and send response as ok with set paymentStatus as SUCCESS
-        //after that we save payment in db
-        Payment payment = mapper.convertViewToEntity(paymentRequest);
-        payment.setStatus(PaymentStatus.SUCCESS);
-        return repository.save(payment)
+        //after that we save transaction in db
+        Transaction transaction = mapper.convertViewToEntity(paymentRequest);
+        transaction.setStatus(PaymentStatus.SUCCESS);
+        transaction.setPaymentDate(LocalDateTime.now());
+        return repository.save(transaction)
                 .map(mapper::convertEntityToDto)
                 .log();
     }

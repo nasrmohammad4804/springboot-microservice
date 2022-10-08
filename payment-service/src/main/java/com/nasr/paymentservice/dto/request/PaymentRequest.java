@@ -16,6 +16,7 @@ public class PaymentRequest {
 
     @NotNull
     private PaymentMode mode;
+
     private AccountInfo accountInfo;
 
     private Double totalAmount;
