@@ -1,5 +1,7 @@
 package com.nasr.paymentservice.exception;
 
 
-public record ErrorResponse (String message , String errorCode) {
+import org.springframework.http.HttpStatus;
+
+public record ErrorResponse (String message , HttpStatus errorCode) {
 }
