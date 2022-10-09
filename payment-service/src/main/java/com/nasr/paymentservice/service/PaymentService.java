@@ -4,5 +4,5 @@ import com.nasr.paymentservice.dto.request.PaymentRequest;
 
 public interface PaymentService {
 
-    boolean doPayment(PaymentRequest paymentRequest);
+    void doPayment(PaymentRequest paymentRequest) throws Exception;
 }

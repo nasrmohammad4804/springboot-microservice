@@ -14,6 +14,12 @@ public class RestResponseEntityExceptionHandler {
                 .body(new ErrorResponse(e.getMessage(),HttpStatus.NOT_FOUND));
     }
 
+    @ExceptionHandler(InvalidPaymentException.class)
+    public ResponseEntity<ErrorResponse> paymentDoesntExceptionHandler(InvalidPaymentException e){
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> genericExceptionHandler(Exception e){
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

@@ -8,12 +8,12 @@ import org.springframework.stereotype.Service;
 public class StripePaymentServiceImpl implements PaymentService {
 
     @Override
-    public boolean doPayment(PaymentRequest paymentRequest) {
+    public void  doPayment(PaymentRequest paymentRequest) throws Exception{
 
         // we pay this order with accountInfo and base on payment mode
         // we can use third party payment service for do this
-        // and finally send response of transaction detail
+        // if payment is successfully then every thing ok
+        //otherwise we throw exception which from third party payment
         // in this section we skip actual payment
-        return false;
     }
 }

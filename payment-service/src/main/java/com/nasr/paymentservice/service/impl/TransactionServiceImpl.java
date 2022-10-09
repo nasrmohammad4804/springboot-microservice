@@ -5,6 +5,7 @@ import com.nasr.paymentservice.domain.Transaction;
 import com.nasr.paymentservice.domain.enumeration.PaymentStatus;
 import com.nasr.paymentservice.dto.request.PaymentRequest;
 import com.nasr.paymentservice.dto.response.PaymentResponse;
+import com.nasr.paymentservice.exception.InvalidPaymentException;
 import com.nasr.paymentservice.mapper.PaymentMapper;
 import com.nasr.paymentservice.repository.TransactionRepository;
 import com.nasr.paymentservice.service.PaymentService;
@@ -24,7 +25,7 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
 
     private final PaymentService paymentService;
 
-    public TransactionServiceImpl(TransactionRepository repository, PaymentMapper mapper,PaymentService paymentService) {
+    public TransactionServiceImpl(TransactionRepository repository, PaymentMapper mapper, PaymentService paymentService) {
         super(repository, mapper);
         this.paymentService = paymentService;
     }
@@ -34,7 +35,6 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         return Transaction.class;
     }
 
-
     @Override
     @Transactional
     public Mono<PaymentResponse> saveOrUpdate(PaymentRequest paymentRequest) {
@@ -42,10 +42,14 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         //and if third party do payment and send response as ok with set paymentStatus as SUCCESS
         //after that we save transaction in db
 
-        boolean result = paymentService.doPayment(paymentRequest);
+        try {
+            paymentService.doPayment(paymentRequest);
+            log.info("payment successfully done !");
+        } catch (Exception e) {
+            log.error("payment was not successfully !");
+            throw new InvalidPaymentException(e.getMessage());
+        }
 
-        if (!result)
-            throw new IllegalStateException("payment was not successfully !");
 
         Transaction transaction = mapper.convertViewToEntity(paymentRequest);
 
@@ -53,7 +57,7 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         transaction.setPaymentDate(LocalDateTime.now());
         return repository.save(transaction)
                 .map(mapper::convertEntityToDto)
-                .doOnNext(tx -> log.info("payment was successfully and transaction id is : {} ",tx.getId()))
+                .doOnNext(tx -> log.info("payment was successfully and transaction id is : {} ", tx.getId()))
                 .log();
     }
 
