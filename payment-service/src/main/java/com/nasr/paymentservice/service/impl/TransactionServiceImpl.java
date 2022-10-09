@@ -42,10 +42,15 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         //and if third party do payment and send response as ok with set paymentStatus as SUCCESS
         //after that we save transaction in db
 
+        PaymentStatus status = null;
         try {
             paymentService.doPayment(paymentRequest);
+            status=PaymentStatus.SUCCESS;
             log.info("payment successfully done !");
+
         } catch (Exception e) {
+
+            status=PaymentStatus.FAIL;
             log.error("payment was not successfully !");
             throw new InvalidPaymentException(e.getMessage());
         }
@@ -53,7 +58,7 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
 
         Transaction transaction = mapper.convertViewToEntity(paymentRequest);
 
-        transaction.setStatus(PaymentStatus.SUCCESS);
+        transaction.setStatus(status);
         transaction.setPaymentDate(LocalDateTime.now());
         return repository.save(transaction)
                 .map(mapper::convertEntityToDto)
