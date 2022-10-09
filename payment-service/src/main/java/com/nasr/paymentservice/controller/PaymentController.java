@@ -2,7 +2,7 @@ package com.nasr.paymentservice.controller;
 
 import com.nasr.paymentservice.dto.request.PaymentRequest;
 import com.nasr.paymentservice.dto.response.PaymentResponse;
-import com.nasr.paymentservice.service.PaymentService;
+import com.nasr.paymentservice.service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +15,7 @@ import javax.validation.Valid;
 public class PaymentController {
 
     @Autowired
-    private PaymentService paymentService;
+    private TransactionService paymentService;
 
     @PostMapping("/doPayment")
     public Mono<ResponseEntity<?>> doPayment(@RequestBody @Valid PaymentRequest paymentRequest) {

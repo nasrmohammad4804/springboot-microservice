@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 @Repository
-public interface PaymentRepository extends ReactiveCrudRepository<Transaction,Long> {
+public interface TransactionRepository extends ReactiveCrudRepository<Transaction,Long> {
 
     @Query("select p.id as id , p.payment_mode as mode , p.payment_status as status  from payment_table as p where p.order_Id= :orderId ")
     Mono<PaymentResponse> findByOrderId(Long orderId);
