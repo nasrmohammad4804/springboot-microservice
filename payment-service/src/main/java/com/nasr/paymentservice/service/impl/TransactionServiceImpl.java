@@ -6,8 +6,9 @@ import com.nasr.paymentservice.domain.enumeration.PaymentStatus;
 import com.nasr.paymentservice.dto.request.PaymentRequest;
 import com.nasr.paymentservice.dto.response.PaymentResponse;
 import com.nasr.paymentservice.mapper.PaymentMapper;
-import com.nasr.paymentservice.repository.PaymentRepository;
+import com.nasr.paymentservice.repository.TransactionRepository;
 import com.nasr.paymentservice.service.PaymentService;
+import com.nasr.paymentservice.service.TransactionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
@@ -16,11 +17,14 @@ import java.time.LocalDateTime;
 
 @Service
 @Transactional(readOnly = true)
-public class PaymentServiceImpl extends BaseServiceImpl<Transaction, Long, PaymentRepository, PaymentResponse, PaymentRequest>
-        implements PaymentService {
+public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, TransactionRepository, PaymentResponse, PaymentRequest>
+        implements TransactionService {
 
-    public PaymentServiceImpl(PaymentRepository repository, PaymentMapper mapper) {
+    private final PaymentService paymentService;
+
+    public TransactionServiceImpl(TransactionRepository repository, PaymentMapper mapper,PaymentService paymentService) {
         super(repository, mapper);
+        this.paymentService = paymentService;
     }
 
     @Override
@@ -28,12 +32,19 @@ public class PaymentServiceImpl extends BaseServiceImpl<Transaction, Long, Payme
         return Transaction.class;
     }
 
+
     @Override
     @Transactional
     public Mono<PaymentResponse> saveOrUpdate(PaymentRequest paymentRequest) {
         // can pay order by third party service with cardNumber and cvv2 etc ...  we mocked this section
         //and if third party do payment and send response as ok with set paymentStatus as SUCCESS
         //after that we save transaction in db
+
+        boolean result = paymentService.doPayment(paymentRequest);
+
+        if (!result)
+            throw new IllegalStateException("payment was not successfully !");
+
         Transaction transaction = mapper.convertViewToEntity(paymentRequest);
         transaction.setStatus(PaymentStatus.SUCCESS);
         transaction.setPaymentDate(LocalDateTime.now());
