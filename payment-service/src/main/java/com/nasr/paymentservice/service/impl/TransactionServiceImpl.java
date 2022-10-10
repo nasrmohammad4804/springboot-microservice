@@ -6,6 +6,7 @@ import com.nasr.paymentservice.domain.enumeration.PaymentStatus;
 import com.nasr.paymentservice.dto.request.PaymentRequest;
 import com.nasr.paymentservice.dto.response.PaymentResponse;
 import com.nasr.paymentservice.exception.InvalidPaymentException;
+import com.nasr.paymentservice.external.response.OrderResponse;
 import com.nasr.paymentservice.mapper.PaymentMapper;
 import com.nasr.paymentservice.repository.TransactionRepository;
 import com.nasr.paymentservice.service.PaymentService;
@@ -13,6 +14,7 @@ import com.nasr.paymentservice.service.TransactionService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -24,10 +26,12 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         implements TransactionService {
 
     private final PaymentService paymentService;
+    private final WebClient.Builder webClientBuilder;
 
-    public TransactionServiceImpl(TransactionRepository repository, PaymentMapper mapper, PaymentService paymentService) {
+    public TransactionServiceImpl(TransactionRepository repository, PaymentMapper mapper, PaymentService paymentService, WebClient.Builder webClientBuilder) {
         super(repository, mapper);
         this.paymentService = paymentService;
+        this.webClientBuilder = webClientBuilder;
     }
 
     @Override
@@ -45,24 +49,37 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         PaymentStatus status = null;
         try {
             paymentService.doPayment(paymentRequest);
-            status=PaymentStatus.SUCCESS;
-            log.info("payment successfully done !");
+
+            status = PaymentStatus.SUCCESS;
 
         } catch (Exception e) {
 
-            status=PaymentStatus.FAIL;
+            status = PaymentStatus.FAIL;
             log.error("payment was not successfully !");
             throw new InvalidPaymentException(e.getMessage());
         }
-
 
         Transaction transaction = mapper.convertViewToEntity(paymentRequest);
 
         transaction.setStatus(status);
         transaction.setPaymentDate(LocalDateTime.now());
-        return repository.save(transaction)
+
+        return completeOrder(paymentRequest.getOrderId())
+                .flatMap(orderResponse -> repository.save(transaction))
                 .map(mapper::convertEntityToDto)
                 .doOnNext(tx -> log.info("payment was successfully and transaction id is : {} ", tx.getId()))
+                .log();
+    }
+
+    private Mono<OrderResponse> completeOrder(Long orderId) {
+
+        return webClientBuilder.build()
+                .put()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/order/completeOrderStatus/" + orderId)
+                        .host("ORDER-SERVICE")
+                        .build())
+                .retrieve()
+                .bodyToMono(OrderResponse.class)
                 .log();
     }
 
