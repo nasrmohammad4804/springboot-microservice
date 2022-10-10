@@ -2,6 +2,8 @@ package com.nasr.orderhandlerservice.model.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nasr.orderhandlerservice.job.OrderPlacedHandlerJob;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -34,17 +36,20 @@ public class JobDescriptorRequest {
     @Min(value = 1)
     private int orderId;
 
+    @NotNull
+    private Map<Long,Long> productInfo;
 
-
-    private Map<String,Object > getData(){
+    private Map<String,Object > getData() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
         Map<String,Object> data  =new HashMap<>();
         data.put("orderId",orderId);
+        data.put("productInfo",mapper.writeValueAsString(productInfo));
 
         return data;
     }
 
 
-    public JobDetail buildJobDetail() {
+    public JobDetail buildJobDetail() throws JsonProcessingException {
         JobDataMap jobDataMap = new JobDataMap(getData());
 
         return newJob(OrderPlacedHandlerJob.class)

@@ -3,6 +3,7 @@ package com.nasr.orderhandlerservice.controller;
 import com.nasr.orderhandlerservice.model.request.JobDescriptorRequest;
 import com.nasr.orderhandlerservice.service.OrderPlacedHandlerService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,10 +28,16 @@ public class OrderPlacedHandlerController {
      */
 
     @PostMapping("/groups/{group}/jobs")
-    public ResponseEntity<JobDescriptorRequest> createJob(@RequestBody @Valid JobDescriptorRequest jobDescriptor, @PathVariable String group){
+    public ResponseEntity<?> createJob(@RequestBody @Valid JobDescriptorRequest jobDescriptor, @PathVariable String group){
         jobDescriptor.setGroup(group);
+        try {
         JobDescriptorRequest job = orderPlacedHandlerService.createJob(jobDescriptor);
-
         return ResponseEntity.ok(job);
+
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(e.getMessage());
+        }
+
     }
 }

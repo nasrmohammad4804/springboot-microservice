@@ -1,5 +1,6 @@
 package com.nasr.orderhandlerservice.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.nasr.orderhandlerservice.model.request.JobDescriptorRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -17,7 +18,7 @@ public class OrderPlacedHandlerService {
 
     private final Scheduler scheduler;
 
-    public JobDescriptorRequest createJob(JobDescriptorRequest descriptor)  {
+    public JobDescriptorRequest createJob(JobDescriptorRequest descriptor) throws JsonProcessingException {
         JobDetail jobDetail = descriptor.buildJobDetail();
         Set<Trigger> triggers = descriptor.buildTriggers();
 
