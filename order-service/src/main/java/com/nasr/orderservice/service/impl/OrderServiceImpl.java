@@ -11,6 +11,7 @@ import com.nasr.orderservice.external.request.DecreaseProductQuantityRequest;
 import com.nasr.orderservice.external.request.JobDescriptorRequest;
 import com.nasr.orderservice.external.request.TriggerDescriptorRequest;
 import com.nasr.orderservice.external.response.PaymentResponse;
+import com.nasr.orderservice.external.response.ProductResponse;
 import com.nasr.orderservice.repository.OrderRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import com.nasr.orderservice.service.OrderService;
@@ -23,11 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_DEFAULT_HOUR;
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_GROUP_NAME;
@@ -35,7 +36,7 @@ import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_GROUP_N
 @Service
 @Transactional(readOnly = true)
 @Log4j2
-public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderRepository, OrderPlaceResponse, OrderRequest> implements OrderService {
+public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderRepository, OrderResponse, OrderRequest> implements OrderService {
 
 
     private final OrderDetailService orderDetailService;
@@ -43,7 +44,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     @Autowired
     private WebClient.Builder webClient;
 
-    public OrderServiceImpl(OrderRepository repository, BaseMapper<Order, OrderPlaceResponse, OrderRequest> mapper, OrderDetailService orderDetailService) {
+    public OrderServiceImpl(OrderRepository repository, BaseMapper<Order, OrderResponse, OrderRequest> mapper, OrderDetailService orderDetailService) {
         super(repository, mapper);
         this.orderDetailService = orderDetailService;
     }
@@ -66,7 +67,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 
     @Override
     @Transactional
-    public Mono<OrderPlaceResponse> saveOrUpdate(OrderRequest orderRequest) {
+    public Mono<OrderResponse> saveOrUpdate(OrderRequest orderRequest) {
         log.info("placing order request: {} ", orderRequest);
 
         return decreaseProductQuantity(getDecreaseProductQuantities(orderRequest.getOrderPlaceRequestDtoList()))
@@ -85,18 +86,10 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                                 return orderDetailService.saveAll(orderDetailRequestDtos)
                                         .collectList().zipWith(Mono.just(o));
 
-                            });
-                }).map(tuples2 -> {
-
-                    OrderPlaceResponse orderPlaceResponseDto = new OrderPlaceResponse();
-                    orderPlaceResponseDto.setOrderDate(tuples2.getT2().getOrderDate());
-                    orderPlaceResponseDto.setOrderId(tuples2.getT2().getId());
-                    tuples2.getT1().forEach(tuple2 -> orderPlaceResponseDto.getProducts()
-                            .add(new ProductResponse(tuple2.getProductId(), tuple2.getProductNumber())));
-
-                    return orderPlaceResponseDto;
-                })
-                .doOnNext(this::createOrderHandler);
+                            })
+                            .doOnNext(this::createOrderHandler);
+                }).map(tuples2 -> mapper.convertEntityToDto(tuples2.getT2()))
+                .log();
 
 //        we place order and reduce quantity of specific product from stock
 //        but after that if customer less than 1 hour move to payment and pay the order is ok
@@ -104,15 +97,16 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 //        and after payment is ok we can publish event to shipment  service to tell ready for shipping this order
     }
 
-    private void createOrderHandler(OrderPlaceResponse orderPlaceResponse) {
+    private void createOrderHandler(Tuple2<List<OrderDetailResponse>, Order> tuple2) {
 
         TriggerDescriptorRequest triggerDescriptorRequest = TriggerDescriptorRequest.builder()
                 .hour(ORDER_HANDLER_DEFAULT_HOUR).build();
 
         JobDescriptorRequest descriptorRequest = JobDescriptorRequest.builder()
-                .orderId(orderPlaceResponse.getOrderId())
+                .orderId(tuple2.getT2().getId())
                 .triggers(List.of(triggerDescriptorRequest))
                 .name(UUID.randomUUID().toString())
+                .productInfo(getOrderProductDetails(tuple2.getT1()))
                 .build();
 
         webClient.build()
@@ -124,6 +118,12 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .retrieve()
                 .bodyToMono(JobDescriptorRequest.class)
                 .subscribe();
+    }
+
+    private Map<Long, Long> getOrderProductDetails(List<OrderDetailResponse> orderDetailResponses) {
+
+        return orderDetailResponses.stream()
+                .collect(Collectors.toMap(OrderDetailResponse::getProductId, OrderDetailResponse::getProductNumber));
     }
 
     private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests) {
@@ -151,45 +151,42 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     }
 
     @Override
-    public Mono<OrderPlaceWithPaymentResponse> getOrderWithPayment(Long id) {
-        log.info("order with payment requested by order id : {}",id);
-        return repository.findById(id)
-                .switchIfEmpty(Mono.error(new OrderNotFoundException("dont find any order with id : " + id)))
-                .flatMap(order -> {
-
-                    Flux<OrderDetailResponse> orderDetails = orderDetailService.getOrderDetailsByOrderId(order.getId());
-                    Mono<PaymentResponse> payment = getPayment(order.getId());
-                    OrderPlaceWithPaymentResponse dto = new OrderPlaceWithPaymentResponse();
-
-                    dto.setOrderId(order.getId());
-                    dto.setOrderDate(order.getOrderDate());
-
-
-                    return orderDetails.collectList()
-                            .zipWith(payment)
-                            .map(tuple2 -> {
-                                dto.setPaymentResponse(tuple2.getT2());
-                                dto.setOrderDetails(tuple2.getT1());
-                                return dto;
-                            });
-
-                });
-    }
-
-    @Override
     @Transactional
     public Mono<OrderResponse> completeOrderPlacedStatus(Long orderId) {
         return repository.findById(orderId)
-                .switchIfEmpty(Mono.error(new OrderNotFoundException("dont find any order with id : "+orderId)))
+                .switchIfEmpty(Mono.error(new OrderNotFoundException("dont find any order with id : " + orderId)))
                 .flatMap(order -> {
                     order.setOrderStatus(OrderStatus.COMPLETED.name());
                     Mono<Order> orderMono = repository.save(order);
 
                     return orderMono.map(orderEntity -> {
-                        OrderResponse orderResponse= new OrderResponse();
-                        BeanUtils.copyProperties(orderEntity,orderResponse);
+                        OrderResponse orderResponse = new OrderResponse();
+                        BeanUtils.copyProperties(orderEntity, orderResponse);
                         return orderResponse;
-                    } );
+                    });
+                });
+    }
+
+    @Override
+    public Flux<ProductResponse> getOrderPlacedProducts(Long orderId) {
+        Flux<OrderDetailResponse> orderDetails = orderDetailService.getOrderDetailsByOrderId(orderId);
+
+
+        return orderDetails.map(OrderDetailResponse::getProductId)
+                .collectList()
+                .flatMapMany(productIds -> webClient.build()
+                        .get()
+                        .uri(uriBuilder -> uriBuilder.path("/api/v1/product/all")
+                                .host("PRODUCT-SERVICE")
+                                .queryParam("id", productIds)
+                                .build()
+                        ).retrieve()
+                        .bodyToFlux(ProductResponse.class)
+                        .zipWith(orderDetails))
+                .map(tuples2 -> {
+                    ProductResponse productResponse = tuples2.getT1();
+                    productResponse.setQuantity(tuples2.getT2().getProductNumber());
+                    return productResponse;
                 });
     }
 

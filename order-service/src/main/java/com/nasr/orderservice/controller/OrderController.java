@@ -1,13 +1,16 @@
 package com.nasr.orderservice.controller;
 
 import com.nasr.orderservice.dto.request.OrderRequest;
-import com.nasr.orderservice.dto.response.OrderPlaceWithPaymentResponse;
 import com.nasr.orderservice.dto.response.OrderResponse;
+import com.nasr.orderservice.external.response.ProductResponse;
 import com.nasr.orderservice.service.OrderService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.validation.Valid;
@@ -28,18 +31,25 @@ public class OrderController {
     }
 
     @DeleteMapping("/cancelOrder/{orderId}")
-    public Mono<ResponseEntity<Void>> cancelOrder(@PathVariable Long orderId){
+    public Mono<ResponseEntity<Void>> cancelOrder(@PathVariable Long orderId) {
         return orderService.deleteById(orderId)
                 .map(ResponseEntity::ok);
     }
 
-    @GetMapping(value = "/{id}")
-    public Mono<OrderPlaceWithPaymentResponse> getOrderPlaced(@PathVariable Long id) {
-        log.info("request come in to order service");
-        return orderService.getOrderWithPayment(id);
+    @GetMapping(value = "/{id}/products",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @ResponseStatus(HttpStatus.OK)
+    public Flux<ProductResponse> getOrderPlaceProducts(@PathVariable("id") Long orderId){
+        return orderService.getOrderPlacedProducts(orderId);
     }
+
     @PutMapping("/completeOrderStatus/{id}")
-    public Mono<OrderResponse> completeOrderPlaceStatus(@PathVariable("id") Long orderId){
+    public Mono<OrderResponse> completeOrderPlaceStatus(@PathVariable("id") Long orderId) {
         return orderService.completeOrderPlacedStatus(orderId);
     }
+
+    @GetMapping("/{id}")
+    public Mono<OrderResponse> getOrderPlaced(@PathVariable Long id) {
+        return orderService.getById(id);
+    }
+
 }

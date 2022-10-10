@@ -2,14 +2,14 @@ package com.nasr.orderservice.service;
 
 import com.nasr.orderservice.base.service.BaseService;
 import com.nasr.orderservice.dto.request.OrderRequest;
-import com.nasr.orderservice.dto.response.OrderPlaceResponse;
-import com.nasr.orderservice.dto.response.OrderPlaceWithPaymentResponse;
 import com.nasr.orderservice.dto.response.OrderResponse;
-import org.springframework.http.ResponseEntity;
+import com.nasr.orderservice.external.response.ProductResponse;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public interface OrderService extends BaseService<Long, OrderPlaceResponse, OrderRequest> {
-    Mono<OrderPlaceWithPaymentResponse> getOrderWithPayment(Long id);
+public interface OrderService extends BaseService<Long, OrderResponse, OrderRequest> {
 
     Mono<OrderResponse> completeOrderPlacedStatus(Long orderId);
+
+    Flux<ProductResponse> getOrderPlacedProducts(Long orderId);
 }

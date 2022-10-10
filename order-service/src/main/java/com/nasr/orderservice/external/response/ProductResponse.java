@@ -1,4 +1,4 @@
-package com.nasr.orderservice.dto.response;
+package com.nasr.orderservice.external.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
