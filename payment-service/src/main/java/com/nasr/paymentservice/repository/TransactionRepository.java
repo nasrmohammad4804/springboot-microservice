@@ -10,6 +10,6 @@ import reactor.core.publisher.Mono;
 @Repository
 public interface TransactionRepository extends ReactiveCrudRepository<Transaction,Long> {
 
-    @Query("select p.id as id , p.payment_mode as mode , p.payment_status as status  from transaction_table as p where p.order_Id= :orderId ")
-    Mono<PaymentResponse> findByOrderId(Long orderId);
+    @Query("select p.* from transaction_table as p where p.order_Id= :orderId ")
+    Mono<Transaction> findByOrderId(Long orderId);
 }

@@ -85,6 +85,8 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
 
     @Override
     public Mono<PaymentResponse> getByOrderId(Long orderId) {
-        return repository.findByOrderId(orderId);
+
+        return repository.findByOrderId(orderId)
+                .map(mapper::convertEntityToDto);
     }
 }
