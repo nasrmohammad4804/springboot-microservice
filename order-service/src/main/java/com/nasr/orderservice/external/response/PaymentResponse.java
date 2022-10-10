@@ -1,4 +1,4 @@
-package com.nasr.orderservice.dto.response;
+package com.nasr.orderservice.external.response;
 
 import com.nasr.orderservice.domain.enumeration.PaymentMode;
 import com.nasr.orderservice.domain.enumeration.PaymentStatus;

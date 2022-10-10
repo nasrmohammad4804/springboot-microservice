@@ -2,6 +2,7 @@ package com.nasr.orderservice.controller;
 
 import com.nasr.orderservice.dto.request.OrderRequest;
 import com.nasr.orderservice.dto.response.OrderPlaceWithPaymentResponse;
+import com.nasr.orderservice.dto.response.OrderResponse;
 import com.nasr.orderservice.service.OrderService;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,11 @@ public class OrderController {
 
     @GetMapping(value = "/{id}")
     public Mono<OrderPlaceWithPaymentResponse> getOrderPlaced(@PathVariable Long id) {
+        log.info("request come in to order service");
         return orderService.getOrderWithPayment(id);
+    }
+    @PutMapping("/completeOrderStatus/{id}")
+    public Mono<OrderResponse> completeOrderPlaceStatus(@PathVariable("id") Long orderId){
+        return orderService.completeOrderPlacedStatus(orderId);
     }
 }

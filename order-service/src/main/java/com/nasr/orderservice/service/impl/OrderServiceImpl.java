@@ -7,6 +7,10 @@ import com.nasr.orderservice.domain.enumeration.OrderStatus;
 import com.nasr.orderservice.dto.request.*;
 import com.nasr.orderservice.dto.response.*;
 import com.nasr.orderservice.exception.*;
+import com.nasr.orderservice.external.request.DecreaseProductQuantityRequest;
+import com.nasr.orderservice.external.request.JobDescriptorRequest;
+import com.nasr.orderservice.external.request.TriggerDescriptorRequest;
+import com.nasr.orderservice.external.response.PaymentResponse;
 import com.nasr.orderservice.repository.OrderRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import com.nasr.orderservice.service.OrderService;
@@ -148,6 +152,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 
     @Override
     public Mono<OrderPlaceWithPaymentResponse> getOrderWithPayment(Long id) {
+        log.info("order with payment requested by order id : {}",id);
         return repository.findById(id)
                 .switchIfEmpty(Mono.error(new OrderNotFoundException("dont find any order with id : " + id)))
                 .flatMap(order -> {
@@ -168,6 +173,23 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                                 return dto;
                             });
 
+                });
+    }
+
+    @Override
+    @Transactional
+    public Mono<OrderResponse> completeOrderPlacedStatus(Long orderId) {
+        return repository.findById(orderId)
+                .switchIfEmpty(Mono.error(new OrderNotFoundException("dont find any order with id : "+orderId)))
+                .flatMap(order -> {
+                    order.setOrderStatus(OrderStatus.COMPLETED.name());
+                    Mono<Order> orderMono = repository.save(order);
+
+                    return orderMono.map(orderEntity -> {
+                        OrderResponse orderResponse= new OrderResponse();
+                        BeanUtils.copyProperties(orderEntity,orderResponse);
+                        return orderResponse;
+                    } );
                 });
     }
 

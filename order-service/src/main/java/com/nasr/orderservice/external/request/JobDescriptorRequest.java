@@ -1,4 +1,4 @@
-package com.nasr.orderservice.dto.request;
+package com.nasr.orderservice.external.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
