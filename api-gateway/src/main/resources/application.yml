@@ -1,0 +1,133 @@
+spring:
+  application:
+    name: API-GATEWAY
+  security:
+    oauth2:
+      client:
+        registration:
+          ecommerce-gateway:
+            provider: spring
+            client-id: ecommerce-client
+            client-secret: ecommerce-secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://127.0.0.1/login/oauth2/code/{registrationId}"
+            scope: read,write,openid
+            client-name: ecommerce-gateway
+        provider:
+          spring:
+            issuer-uri: http://auth-server:9000
+
+  config:
+    import: optional:configserver:http://localhost:8888
+  cloud:
+#    if we have temporary system down situation such as lost network use retry pattern
+#    if we have serious problem we use circuit breaker for example one service crashed then dont solve problem with retry
+#    we need to use circuit breaker and defined fallback uri to get instead of specific response instead of calling service
+
+# fault tolerance with resilience 4j is good tool for whenever one application wait to another application to get response
+#    we use in this situation with resilience 4j for
+    gateway:
+      routes:
+        - id: product-service-route
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/product/**
+          filters:
+            - name: Retry
+              args:
+                retries: 3
+                methods: GET
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackOff: 400ms
+            - name: CircuitBreaker
+              args:
+                name: productService
+                fallbackUri: forward:/product-service-fallback
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userKeyResolver}"
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 1
+
+        - id: order-service-route
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/order/**
+          filters:
+            - name: Retry
+              args:
+                retries: 4
+                methods: GET
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackOff: 300ms
+            - name: CircuitBreaker
+              args:
+                name: orderService
+                fallbackUri: forward:/order-service-fallback
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userKeyResolver}"
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 1
+
+        - id: payment-service-route
+          uri: lb://PAYMENT-SERVICE
+          predicates:
+            - Path=/api/v1/payment/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: paymentService
+                fallbackUri: forward:/payment-service-fallback
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userKeyResolver}"
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 100
+  redis:
+    port: 6379
+    host: localhost
+
+
+server:
+  port: 80
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        permittedNumberOfCallsInHalfOpenState: 6
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        registerHealthIndicator: true
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+    instances:
+      productService:
+        baseConfig: default
+      orderService:
+        baseConfig: default
+      paymentService:
+        baseConfig: default
+
+  timelimiter:
+    instances:
+#      we specify if request after 2 second don't process and send response consider as failure in circuit breaker
+      productService:
+        timeDuration: 2s
+      orderService:
+        timeDuration: 2s
+      paymentService:
+        timeDuration: 3s
+
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
