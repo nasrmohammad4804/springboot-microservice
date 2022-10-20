@@ -18,7 +18,7 @@ spring:
             issuer-uri: http://auth-server:9000
 
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
   cloud:
 #    if we have temporary system down situation such as lost network use retry pattern
 #    if we have serious problem we use circuit breaker for example one service crashed then dont solve problem with retry
