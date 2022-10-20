@@ -1,0 +1,17 @@
+server:
+  port: 9000
+
+spring:
+
+  datasource:
+    username: root
+    password: MohammadN@sr13804804
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/microservice-ecommerce-users
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.MySQL5InnoDBDialect
