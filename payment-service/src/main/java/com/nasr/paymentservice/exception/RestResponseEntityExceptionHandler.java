@@ -19,6 +19,11 @@ public class RestResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(e.getMessage(),HttpStatus.INTERNAL_SERVER_ERROR));
     }
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<ErrorResponse> externalServiceExceptionHandler(ExternalServiceException e){
+        return ResponseEntity.status(e.getErrorCode())
+                .body(new ErrorResponse(e.getMessage(),e.getErrorCode()));
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> genericExceptionHandler(Exception e){

@@ -8,4 +8,6 @@ import reactor.core.publisher.Mono;
 public interface TransactionService extends BaseService<Long, PaymentResponse, PaymentRequest> {
 
     Mono<PaymentResponse> getByOrderId(Long orderId);
+
+    Mono<PaymentResponse> doPayment(PaymentRequest paymentRequest, String auth);
 }
