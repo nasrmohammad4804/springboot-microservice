@@ -7,6 +7,7 @@ import com.nasr.productservice.dto.request.RevertProductRequest;
 import com.nasr.productservice.dto.response.ProductResponse;
 import com.nasr.productservice.mapper.ProductMapper;
 import com.nasr.productservice.service.ProductService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/product")
+@SecurityRequirement(name = "Bearer Authentication")
 public class ProductController {
 
     @Autowired
