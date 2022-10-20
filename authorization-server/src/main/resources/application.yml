@@ -2,6 +2,8 @@ server:
   port: 9000
 
 spring:
+  application:
+    name: AUTHORIZATION-SERVER
 
   datasource:
     username: root
@@ -9,7 +11,8 @@ spring:
     url: jdbc:mysql://${DB_HOST:localhost}:3306/microservice-ecommerce-users
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
   jpa:
     show-sql: true
     hibernate:
