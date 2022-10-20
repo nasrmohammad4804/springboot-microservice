@@ -39,7 +39,7 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .redirectUri("http://127.0.0.1/login/oauth2/code/ecommerce-gateway")
                 .clientId("ecommerce-client")
-                .clientSecret("ecommerce-secret")
+                .clientSecret("{noop}ecommerce-secret")
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
                 .scope("read")
                 .scope("write")

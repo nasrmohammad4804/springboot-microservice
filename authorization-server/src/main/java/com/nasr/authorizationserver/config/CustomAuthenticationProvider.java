@@ -1,6 +1,7 @@
 package com.nasr.authorizationserver.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,12 +19,14 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
     private UserDetailsService userDetailsService;
 
     @Autowired
+    @Lazy
     private PasswordEncoder passwordEncoder;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         String userName = authentication.getName();
-        String password = authentication.getPrincipal().toString();
+        String password = authentication.getCredentials().toString();
+
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
 
