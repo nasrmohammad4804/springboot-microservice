@@ -12,18 +12,25 @@ public class ResourceServerConfig {
 
 
     @Bean
-    public SecurityWebFilterChain webFilterChain(ServerHttpSecurity http){
-        return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
+    public SecurityWebFilterChain webFilterChain(ServerHttpSecurity http) {
+
+        http.csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(ServerHttpSecurity.CorsSpec::disable)
                 .authorizeExchange()
-                .anyExchange()
+                .pathMatchers("/v3/api-docs/**", "/webjars/**","/actuator/**")
                 .permitAll()
-                .and().build();
+                .anyExchange()
+                .authenticated()
+                .and()
+                .oauth2ResourceServer()
+                .jwt();
+
+        return http.build();
     }
 
     @Bean
     @LoadBalanced
-    public WebClient.Builder webClient(){
+    public WebClient.Builder webClient() {
         return WebClient.builder();
     }
 }

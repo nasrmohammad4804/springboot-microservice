@@ -12,6 +12,53 @@ spring:
   config:
     import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
 
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        permittedNumberOfCallsInHalfOpenState: 6
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        registerHealthIndicator: true
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+    instances:
+      productService:
+        baseConfig: default
+      orderHandlerService:
+        baseConfig: default
+
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 3s
+        cancelRunningFuture: true
+    instances:
+      productService:
+        baseConfig: default
+      orderHandlerService:
+        baseConfig: default
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+    instances:
+      productService:
+        baseConfig: default
+
 logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG

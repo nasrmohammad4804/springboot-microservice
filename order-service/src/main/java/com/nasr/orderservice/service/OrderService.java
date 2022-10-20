@@ -11,5 +11,7 @@ public interface OrderService extends BaseService<Long, OrderResponse, OrderRequ
 
     Mono<OrderResponse> completeOrderPlacedStatus(Long orderId);
 
-    Flux<ProductResponse> getOrderPlacedProducts(Long orderId);
+    Flux<ProductResponse> getOrderPlacedProducts(Long orderId,String auth);
+
+    Mono<OrderResponse> placeOrder(OrderRequest orderRequest, String auth);
 }

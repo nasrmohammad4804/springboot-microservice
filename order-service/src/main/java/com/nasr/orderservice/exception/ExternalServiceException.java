@@ -14,4 +14,8 @@ public class ExternalServiceException  extends RuntimeException{
         super(message);
         this.errorCode = errorCode;
     }
+
+    public ExternalServiceException(HttpStatus errorCode) {
+        this.errorCode = errorCode;
+    }
 }

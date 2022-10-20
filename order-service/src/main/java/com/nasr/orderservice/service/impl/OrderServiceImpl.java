@@ -15,15 +15,21 @@ import com.nasr.orderservice.external.response.ProductResponse;
 import com.nasr.orderservice.repository.OrderRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import com.nasr.orderservice.service.OrderService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.common.circuitbreaker.configuration.CircuitBreakerConfigCustomizer;
+import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreaker;
+import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreakerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 
 import java.time.LocalDateTime;
@@ -32,6 +38,7 @@ import java.util.stream.Collectors;
 
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_DEFAULT_HOUR;
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_GROUP_NAME;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @Service
 @Transactional(readOnly = true)
@@ -41,12 +48,16 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 
     private final OrderDetailService orderDetailService;
 
+    private final ReactiveCircuitBreakerFactory reactiveCircuitBreakerFactory;
+
     @Autowired
     private WebClient.Builder webClient;
 
-    public OrderServiceImpl(OrderRepository repository, BaseMapper<Order, OrderResponse, OrderRequest> mapper, OrderDetailService orderDetailService) {
+    public OrderServiceImpl(OrderRepository repository, BaseMapper<Order, OrderResponse, OrderRequest> mapper,
+                            OrderDetailService orderDetailService, ReactiveCircuitBreakerFactory reactiveCircuitBreakerFactory) {
         super(repository, mapper);
         this.orderDetailService = orderDetailService;
+        this.reactiveCircuitBreakerFactory = reactiveCircuitBreakerFactory;
     }
 
     @Override
@@ -65,39 +76,8 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
         return Order.class;
     }
 
-    @Override
-    @Transactional
-    public Mono<OrderResponse> saveOrUpdate(OrderRequest orderRequest) {
-        log.info("placing order request: {} ", orderRequest);
-
-        return decreaseProductQuantity(getDecreaseProductQuantities(orderRequest.getOrderPlaceRequestDtoList()))
-                .flatMap(result -> {
-                    Order order = Order.builder()
-                            .orderDate(LocalDateTime.now())
-                            .totalPrice(orderRequest.getTotalPrice())
-                            .orderStatus(OrderStatus.NEW.name())
-                            .build();
-
-                    return repository.save(order)
-                            .flatMap(o -> {
-                                List<OrderDetailRequest> orderDetailRequestDtos = new ArrayList<>();
-                                orderRequest.getOrderPlaceRequestDtoList()
-                                        .forEach(orderPlace -> orderDetailRequestDtos.add(new OrderDetailRequest(orderPlace.getProductId(), o.getId(), orderPlace.getProductNumber())));
-                                return orderDetailService.saveAll(orderDetailRequestDtos)
-                                        .collectList().zipWith(Mono.just(o));
-
-                            })
-                            .doOnNext(this::createOrderHandler);
-                }).map(tuples2 -> mapper.convertEntityToDto(tuples2.getT2()))
-                .log();
-
-//        we place order and reduce quantity of specific product from stock
-//        but after that if customer less than 1 hour move to payment and pay the order is ok
-//        otherwise we cancelled order and revert  product ordered to stock
-//        and after payment is ok we can publish event to shipment  service to tell ready for shipping this order
-    }
-
-    private void createOrderHandler(Tuple2<List<OrderDetailResponse>, Order> tuple2) {
+    @CircuitBreaker(name = "orderHandlerService", fallbackMethod = "orderHandlerServiceFallback")
+    private Mono<JobDescriptorRequest> createOrderHandler(Tuple2<List<OrderDetailResponse>, Order> tuple2, String auth) {
 
         TriggerDescriptorRequest triggerDescriptorRequest = TriggerDescriptorRequest.builder()
                 .hour(ORDER_HANDLER_DEFAULT_HOUR).build();
@@ -109,15 +89,25 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .productInfo(getOrderProductDetails(tuple2.getT1()))
                 .build();
 
-        webClient.build()
+        return webClient.build()
                 .post()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/orderPlaceHandler/groups/" + ORDER_HANDLER_GROUP_NAME + "/jobs")
                         .host("ORDER-HANDLER-SERVICE")
                         .build())
+                .header(AUTHORIZATION, auth)
                 .body(Mono.just(descriptorRequest), JobDescriptorRequest.class)
                 .retrieve()
+                .onStatus(HttpStatus.SERVICE_UNAVAILABLE::equals,clientResponse ->
+                            Mono.just(new ExternalServiceException( "order handler  service unAvailable !",clientResponse.statusCode()))
+                        )
                 .bodyToMono(JobDescriptorRequest.class)
-                .subscribe();
+                .log();
+    }
+
+    private Mono<JobDescriptorRequest> orderHandlerServiceFallback(Tuple2<List<OrderDetailResponse>, Order> tuple2, String auth, Exception e) {
+        return Mono.error(new ExternalServiceException(
+                HttpStatus.SERVICE_UNAVAILABLE
+        ));
     }
 
     private Map<Long, Long> getOrderProductDetails(List<OrderDetailResponse> orderDetailResponses) {
@@ -126,18 +116,30 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .collect(Collectors.toMap(OrderDetailResponse::getProductId, OrderDetailResponse::getProductNumber));
     }
 
-    private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests) {
+    @CircuitBreaker(name = "productService", fallbackMethod = "decreaseProductServiceFallback")
+    @TimeLimiter(name = "productService")
+    private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests, String auth) {
         return webClient.build()
                 .put()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/product/decreaseQuantity")
                         .host("PRODUCT-SERVICE")
                         .build())
+                .header(AUTHORIZATION, auth)
                 .body(Flux.fromIterable(decreaseProductQuantityRequests), DecreaseProductQuantityRequest.class)
                 .retrieve()
+                .onStatus(HttpStatus.SERVICE_UNAVAILABLE::equals, clientResponse ->
+                        Mono.just(new ExternalServiceException("product service unAvailable !", clientResponse.statusCode()))
+                )
                 .onStatus(HttpStatus::isError, clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
                         .map(error -> new ExternalServiceException(error.getMessage(), clientResponse.statusCode())))
                 .bodyToMono(Boolean.class)
                 .log();
+    }
+
+    private Mono<Boolean> decreaseProductServiceFallback(List<Object> objects, String auth, Exception e) {
+        return Mono.error(new ExternalServiceException(
+                HttpStatus.SERVICE_UNAVAILABLE
+        ));
     }
 
     private List<DecreaseProductQuantityRequest> getDecreaseProductQuantities(List<OrderPlaceRequest> orderPlaceRequests) {
@@ -168,7 +170,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     }
 
     @Override
-    public Flux<ProductResponse> getOrderPlacedProducts(Long orderId) {
+    public Flux<ProductResponse> getOrderPlacedProducts(Long orderId, String auth) {
         Flux<OrderDetailResponse> orderDetails = orderDetailService.getOrderDetailsByOrderId(orderId);
 
 
@@ -180,7 +182,9 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                                 .host("PRODUCT-SERVICE")
                                 .queryParam("id", productIds)
                                 .build()
-                        ).retrieve()
+                        )
+                        .header(AUTHORIZATION, auth)
+                        .retrieve()
                         .bodyToFlux(ProductResponse.class)
                         .zipWith(orderDetails))
                 .map(tuples2 -> {
@@ -188,6 +192,43 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                     productResponse.setQuantity(tuples2.getT2().getProductNumber());
                     return productResponse;
                 });
+    }
+
+    @Override
+    @Transactional
+    public Mono<OrderResponse> placeOrder(OrderRequest orderRequest, String auth) {
+        log.info("placing order request: {} ", orderRequest);
+
+        return decreaseProductQuantity(getDecreaseProductQuantities(orderRequest.getOrderPlaceRequestDtoList()), auth)
+                .flatMap(result -> {
+                    Order order = Order.builder()
+                            .orderDate(LocalDateTime.now())
+                            .totalPrice(orderRequest.getTotalPrice())
+                            .orderStatus(OrderStatus.NEW.name())
+                            .build();
+
+                    return repository.save(order)
+                            .flatMap(o -> {
+                                List<OrderDetailRequest> orderDetailRequestDtos = new ArrayList<>();
+                                orderRequest.getOrderPlaceRequestDtoList()
+                                        .forEach(orderPlace -> orderDetailRequestDtos.add(new OrderDetailRequest(orderPlace.getProductId(), o.getId(), orderPlace.getProductNumber())));
+                                return orderDetailService.saveAll(orderDetailRequestDtos)
+                                        .collectList().zipWith(Mono.just(o));
+
+                            });
+
+                }).flatMap(tuples2 -> createOrderHandler(tuples2, auth)
+                        .single()
+                        .map(jobDescriptorRequest -> {
+                            log.info("sent job successfully to order handler service");
+                            return mapper.convertEntityToDto(tuples2.getT2());
+                        }))
+                .log();
+
+//        we place order and reduce quantity of specific product from stock
+//        but after that if customer less than 1 hour move to payment and pay the order is ok
+//        otherwise we cancelled order and revert  product ordered to stock
+//        and after payment is ok we can publish event to shipment  service to tell ready for shipping this order
     }
 
     private Mono<PaymentResponse> getPayment(Long id) {
