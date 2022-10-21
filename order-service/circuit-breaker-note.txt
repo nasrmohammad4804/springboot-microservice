@@ -1,0 +1,11 @@
+----------------------------------------------------------------------------------------------------------------------------------
+import note of circuit breaker
+if specific exception occurred and you want to consider as fail and consider as business exception
+for example error 404 or 400 you use ignoreException for circuit breaker but fallback method work similar
+try catch block and you need to restrict this exception from block or you dont access to do this maybe you dont use sequential programming
+to declare multiple fallback method you can throw this exception but on next step check this is business exception or as failure
+--- very important note --- dont think if fall back method executed then certainly request was failed - in my case get error 400
+for cant decrease product from stock in product service and convert to ExternalServiceException then circuit breaker understand
+to ignore externalServiceException as failure but we declare every Exception in fallback method then fallback method called while request
+dont consider as failure - for this reason better to restrict domain of exception in fallback method or handle this exception in fallback method
+ -----------------------------------------------------------------------------------------------------------------------------------------------
