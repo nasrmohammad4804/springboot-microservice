@@ -2,6 +2,7 @@ package com.nasr.orderhandlerservice.controller;
 
 import com.nasr.orderhandlerservice.model.request.JobDescriptorRequest;
 import com.nasr.orderhandlerservice.service.OrderPlacedHandlerService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +12,7 @@ import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/orderPlaceHandler")
+@SecurityRequirement(name = "Bearer Authentication")
 public class OrderPlacedHandlerController {
 
     @Autowired
