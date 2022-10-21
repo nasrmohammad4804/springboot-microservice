@@ -2,12 +2,10 @@ package com.nasr.orderservice.controller;
 
 import com.nasr.orderservice.dto.request.OrderRequest;
 import com.nasr.orderservice.dto.response.OrderResponse;
-import com.nasr.orderservice.exception.ErrorResponse;
 import com.nasr.orderservice.exception.ExternalServiceException;
 import com.nasr.orderservice.external.response.ProductResponse;
 import com.nasr.orderservice.service.OrderService;
 import com.nasr.orderservice.util.Oauth2TokenUtil;
-import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
@@ -18,14 +16,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.security.oauth2.core.OAuth2Token;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.validation.Valid;
-
-import java.util.concurrent.CompletableFuture;
 
 import static com.nasr.orderservice.util.Oauth2TokenUtil.getAuth;
 
@@ -60,7 +55,7 @@ public class OrderController {
         return  orderService.getOrderPlacedProducts(orderId,Oauth2TokenUtil.getAuth(request));
     }
 
-    // this is fallback method for
+    // this is fallback method for product service
     public Flux<ProductResponse> productServiceFallback(Long orderId , ServerHttpRequest request,Exception e){
 
         return Flux.error(() -> new ExternalServiceException(

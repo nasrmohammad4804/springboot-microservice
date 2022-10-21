@@ -4,20 +4,22 @@ import com.nasr.orderservice.base.mapper.BaseMapper;
 import com.nasr.orderservice.base.service.impl.BaseServiceImpl;
 import com.nasr.orderservice.domain.Order;
 import com.nasr.orderservice.domain.enumeration.OrderStatus;
-import com.nasr.orderservice.dto.request.*;
-import com.nasr.orderservice.dto.response.*;
-import com.nasr.orderservice.exception.*;
+import com.nasr.orderservice.dto.request.OrderDetailRequest;
+import com.nasr.orderservice.dto.request.OrderPlaceRequest;
+import com.nasr.orderservice.dto.request.OrderRequest;
+import com.nasr.orderservice.dto.response.OrderDetailResponse;
+import com.nasr.orderservice.dto.response.OrderResponse;
+import com.nasr.orderservice.exception.ErrorResponse;
+import com.nasr.orderservice.exception.ExternalServiceException;
+import com.nasr.orderservice.exception.OrderNotFoundException;
 import com.nasr.orderservice.external.request.DecreaseProductQuantityRequest;
 import com.nasr.orderservice.external.request.JobDescriptorRequest;
 import com.nasr.orderservice.external.request.TriggerDescriptorRequest;
-import com.nasr.orderservice.external.response.PaymentResponse;
 import com.nasr.orderservice.external.response.ProductResponse;
 import com.nasr.orderservice.repository.OrderRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import com.nasr.orderservice.service.OrderService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.common.circuitbreaker.configuration.CircuitBreakerConfigCustomizer;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,11 +31,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_DEFAULT_HOUR;
@@ -97,17 +101,25 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .header(AUTHORIZATION, auth)
                 .body(Mono.just(descriptorRequest), JobDescriptorRequest.class)
                 .retrieve()
-                .onStatus(HttpStatus.SERVICE_UNAVAILABLE::equals,clientResponse ->
-                            Mono.just(new ExternalServiceException( "order handler  service unAvailable !",clientResponse.statusCode()))
-                        )
+                .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)), clientResponse ->
+                        Mono.error(() -> new ExternalServiceException("error occurred for create job on order handler service ", clientResponse.statusCode())))
                 .bodyToMono(JobDescriptorRequest.class)
+                .transform(it -> {
+                    ReactiveCircuitBreaker circuitBreaker = reactiveCircuitBreakerFactory.create("orderHandlerService");
+                    return circuitBreaker.run(it, Mono::error);
+                })
+                .onErrorMap(customException ->
+                        !(customException instanceof ExternalServiceException), error -> orderHandlerServiceFallback())
                 .log();
     }
 
-    private Mono<JobDescriptorRequest> orderHandlerServiceFallback(Tuple2<List<OrderDetailResponse>, Order> tuple2, String auth, Exception e) {
-        return Mono.error(new ExternalServiceException(
+    private Exception orderHandlerServiceFallback() {
+        log.error("---------------------- order handler service fallback error ---------------------");
+        return new ExternalServiceException(
+                "order handler service unAvailable !!!"
+                ,
                 HttpStatus.SERVICE_UNAVAILABLE
-        ));
+        );
     }
 
     private Map<Long, Long> getOrderProductDetails(List<OrderDetailResponse> orderDetailResponses) {
@@ -116,8 +128,6 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .collect(Collectors.toMap(OrderDetailResponse::getProductId, OrderDetailResponse::getProductNumber));
     }
 
-    @CircuitBreaker(name = "productService", fallbackMethod = "decreaseProductServiceFallback")
-    @TimeLimiter(name = "productService")
     private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests, String auth) {
         return webClient.build()
                 .put()
@@ -127,19 +137,26 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .header(AUTHORIZATION, auth)
                 .body(Flux.fromIterable(decreaseProductQuantityRequests), DecreaseProductQuantityRequest.class)
                 .retrieve()
-                .onStatus(HttpStatus.SERVICE_UNAVAILABLE::equals, clientResponse ->
-                        Mono.just(new ExternalServiceException("product service unAvailable !", clientResponse.statusCode()))
-                )
-                .onStatus(HttpStatus::isError, clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
-                        .map(error -> new ExternalServiceException(error.getMessage(), clientResponse.statusCode())))
+                .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)),
+                        clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
+                                .map(error -> new ExternalServiceException(error.getMessage(), clientResponse.statusCode())))
                 .bodyToMono(Boolean.class)
+                .transform(it -> {
+                    ReactiveCircuitBreaker circuitBreaker = reactiveCircuitBreakerFactory.create("productService");
+                    return circuitBreaker.run(it, Mono::error);
+                })
+                .onErrorMap(customException -> !(customException instanceof ExternalServiceException),
+                        error -> decreaseProductServiceFallback())
                 .log();
     }
 
-    private Mono<Boolean> decreaseProductServiceFallback(List<Object> objects, String auth, Exception e) {
-        return Mono.error(new ExternalServiceException(
+    private Exception decreaseProductServiceFallback() {
+        log.error("---------------------- product service fallback error ---------------------");
+        return new ExternalServiceException(
+                "product service unAvailable !!!"
+                ,
                 HttpStatus.SERVICE_UNAVAILABLE
-        ));
+        );
     }
 
     private List<DecreaseProductQuantityRequest> getDecreaseProductQuantities(List<OrderPlaceRequest> orderPlaceRequests) {
@@ -229,17 +246,5 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 //        but after that if customer less than 1 hour move to payment and pay the order is ok
 //        otherwise we cancelled order and revert  product ordered to stock
 //        and after payment is ok we can publish event to shipment  service to tell ready for shipping this order
-    }
-
-    private Mono<PaymentResponse> getPayment(Long id) {
-        return webClient.build()
-                .get()
-                .uri(uriBuilder -> uriBuilder.path("/api/v1/payment/" + id)
-                        .host("PAYMENT-SERVICE")
-                        .build())
-                .retrieve()
-                .bodyToMono(PaymentResponse.class)
-                .defaultIfEmpty(new PaymentResponse())
-                .log();
     }
 }
