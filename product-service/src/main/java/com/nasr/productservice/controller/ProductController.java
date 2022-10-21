@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,7 +32,13 @@ public class ProductController {
     @Autowired
     private ProductMapper productMapper;
 
+    /**
+     * this endpoint access for user have ADMIN or SUPER_ADMIN role because ordinary customer dont allowed to define product in service
+     * @param dto as product
+     * @return product info
+     */
     @PostMapping
+    @PreAuthorize(value = "hasAnyRole('ADMIN','SUPER_ADMIN')")
     public Mono<ResponseEntity<ProductResponse>> addProduct(@RequestBody @Valid ProductRequest dto) {
         Product product = productMapper.convertViewToEntity(dto);
         return productService.saveOrUpdate(product)
@@ -56,11 +64,13 @@ public class ProductController {
     }
 
     @PutMapping(path = "/decreaseQuantity")
+    @PreAuthorize("hasAuthority('SCOPE_internal')")
     public Mono<ResponseEntity<Boolean>> decreaseProductQuantity(@RequestBody List< @Valid DecreaseProductQuantityRequest> dtos){
         return productService.decreaseQuantity(dtos)
                 .map(ResponseEntity::ok);
     }
     @PutMapping("/revertProduct")
+    @PreAuthorize("hasAuthority('SCOPE_internal')")
     public Mono<ResponseEntity<Boolean>> revertProduct(@RequestBody List< @Valid RevertProductRequest> revertProductRequests){
         return productService.revertProducts(revertProductRequests)
                 .map(ResponseEntity::ok);
