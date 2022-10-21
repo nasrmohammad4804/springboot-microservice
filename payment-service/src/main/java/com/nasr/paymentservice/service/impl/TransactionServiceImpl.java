@@ -59,12 +59,6 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
                 .retrieve()
                 .onStatus(httpStatus -> httpStatus.isError() && !httpStatus.equals(SERVICE_UNAVAILABLE),clientResponse ->  clientResponse.bodyToMono(ErrorResponse.class)
                         .map(errorResponse -> new ExternalServiceException(errorResponse.message(),clientResponse.statusCode())))
-//                .onStatus(SERVICE_UNAVAILABLE::equals, clientResponse -> Mono.error(() ->
-//                        new ExternalServiceException("order service un available !!",SERVICE_UNAVAILABLE)))
-//                .onStatus(HttpStatus::isError,clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
-//                        .map(errorResponse -> new ExternalServiceException(errorResponse.message(),clientResponse.statusCode()))
-//                )
-
                 .bodyToMono(OrderResponse.class)
                 .log();
     }
