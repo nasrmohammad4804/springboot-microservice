@@ -3,6 +3,7 @@ package com.nasr.orderservice.exception;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -26,6 +27,12 @@ public class RestResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponse> externalServiceException(ExternalServiceException e){
         return ResponseEntity.status(e.getErrorCode())
                 .body(new ErrorResponse(e.getMessage(),e.getErrorCode()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> accessDeniedExceptionHandler(AccessDeniedException e){
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse(e.getMessage(),HttpStatus.FORBIDDEN));
     }
 
     @ExceptionHandler(Exception.class)
