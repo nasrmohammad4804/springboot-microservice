@@ -43,6 +43,7 @@ public class AuthorizationServerConfig {
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
                 .scope("read")
                 .scope("write")
+                .scope("internal")
                 .scope(OidcScopes.OPENID)
                 .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(10)).build())
                 .build();
