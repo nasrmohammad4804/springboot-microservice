@@ -13,12 +13,13 @@ import com.nasr.paymentservice.mapper.PaymentMapper;
 import com.nasr.paymentservice.repository.TransactionRepository;
 import com.nasr.paymentservice.service.PaymentService;
 import com.nasr.paymentservice.service.TransactionService;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -46,7 +47,7 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         return Transaction.class;
     }
 
-    @CircuitBreaker(name = "orderService",fallbackMethod = "orderServiceFallback")
+
     private Mono<OrderResponse> completeOrder(Long orderId,String auth) {
 
         return webClientBuilder.build()
@@ -56,11 +57,14 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
                         .build())
                 .header(AUTHORIZATION,auth)
                 .retrieve()
-                .onStatus(SERVICE_UNAVAILABLE::equals, clientResponse -> Mono.error(() ->
-                        new ExternalServiceException("order service un available !!",SERVICE_UNAVAILABLE)))
-                .onStatus(HttpStatus::isError,clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
-                        .map(errorResponse -> new ExternalServiceException(errorResponse.message(),clientResponse.statusCode()))
-                )
+                .onStatus(httpStatus -> httpStatus.isError() && !httpStatus.equals(SERVICE_UNAVAILABLE),clientResponse ->  clientResponse.bodyToMono(ErrorResponse.class)
+                        .map(errorResponse -> new ExternalServiceException(errorResponse.message(),clientResponse.statusCode())))
+//                .onStatus(SERVICE_UNAVAILABLE::equals, clientResponse -> Mono.error(() ->
+//                        new ExternalServiceException("order service un available !!",SERVICE_UNAVAILABLE)))
+//                .onStatus(HttpStatus::isError,clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
+//                        .map(errorResponse -> new ExternalServiceException(errorResponse.message(),clientResponse.statusCode()))
+//                )
+
                 .bodyToMono(OrderResponse.class)
                 .log();
     }
@@ -73,6 +77,7 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
     }
 
     @Override
+    @CircuitBreaker(name = "orderService",fallbackMethod = "orderServiceFallback")
     public Mono<PaymentResponse> doPayment(PaymentRequest paymentRequest, String auth) {
         // can pay order by third party service with cardNumber and cvv2 etc ...  we mocked this section
         //and if third party do payment and send response as ok with set paymentStatus as SUCCESS
@@ -103,8 +108,14 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
                 .log();
     }
 
-    private Mono<PaymentResponse> orderServiceFallback(Long orderId,String auth){
+    private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest, String auth, CallNotPermittedException ex){
+
+
         log.info("order service unAvailable !!!");
-        return Mono.error(() -> new ExternalServiceException(SERVICE_UNAVAILABLE));
+        return Mono.error(() -> new ExternalServiceException("order service un available !!!",SERVICE_UNAVAILABLE));
+    }
+    private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest, String auth ,WebClientResponseException ex){
+        CallNotPermittedException callNotPermittedException = null;
+        return orderServiceFallback(paymentRequest,auth,callNotPermittedException);
     }
 }

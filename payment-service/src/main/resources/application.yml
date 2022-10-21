@@ -28,6 +28,15 @@ resilience4j:
         waitDurationInOpenState: 10s
         registerHealthIndicator: true
         automaticTransitionFromOpenToHalfOpenEnabled: true
+        ignoreExceptions:
+          - com.nasr.paymentservice.exception.ExternalServiceException
     instances:
       orderService:
         baseConfig: default
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
