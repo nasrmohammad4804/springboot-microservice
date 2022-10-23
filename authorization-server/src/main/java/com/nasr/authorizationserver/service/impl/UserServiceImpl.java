@@ -43,4 +43,9 @@ public class UserServiceImpl implements UserService {
                         .build())
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public UserResponseDto getUserByUserName(String email) {
+        return userRepository.findByUserName(email);
+    }
 }
