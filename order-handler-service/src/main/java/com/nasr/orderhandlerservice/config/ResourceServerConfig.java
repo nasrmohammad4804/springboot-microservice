@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 
 @EnableWebFluxSecurity
 @EnableReactiveMethodSecurity
@@ -34,6 +35,8 @@ public class ResourceServerConfig {
                 .and()
                 .oauth2ResourceServer()
                 .jwt();
+
+        http.securityContextRepository(NoOpServerSecurityContextRepository.getInstance());
 
         return http.build();
     }
