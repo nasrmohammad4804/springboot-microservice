@@ -58,13 +58,14 @@ public class ProductController {
                 .log();
     }
     @GetMapping(path = "/all",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @PreAuthorize("hasAuthority('SCOPE_internal') ")
     @ResponseStatus(HttpStatus.OK)
     public Flux<ProductResponse> getProductByIds(@RequestParam("id") List<Long> ids){
             return productService.getProductByIds(ids);
     }
 
     @PutMapping(path = "/decreaseQuantity")
-    @PreAuthorize("hasAuthority('SCOPE_internal')")
+    @PreAuthorize("hasAuthority('SCOPE_internal') ")
     public Mono<ResponseEntity<Boolean>> decreaseProductQuantity(@RequestBody List< @Valid DecreaseProductQuantityRequest> dtos){
         return productService.decreaseQuantity(dtos)
                 .map(ResponseEntity::ok);
