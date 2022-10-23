@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 public class AuthorizationServerConfig {
 
     @Bean
-    public RegisteredClientRepository repository(){
+    public RegisteredClientRepository repository() {
         RegisteredClient registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
@@ -40,11 +40,13 @@ public class AuthorizationServerConfig {
                 .redirectUri("http://127.0.0.1/login/oauth2/code/ecommerce-gateway")
                 .clientId("ecommerce-client")
                 .clientSecret("{noop}ecommerce-secret")
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                 .scope("read")
                 .scope("write")
                 .scope("internal")
                 .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .scope(OidcScopes.EMAIL)
                 .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofMinutes(10)).build())
                 .build();
 
@@ -54,27 +56,31 @@ public class AuthorizationServerConfig {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(httpSecurity);
-        return httpSecurity.formLogin(Customizer.withDefaults()).build();
+        httpSecurity.formLogin(Customizer.withDefaults());
+
+        return httpSecurity.build();
     }
 
     @Bean
-    public ProviderSettings providerSettings(){
+    public ProviderSettings providerSettings() {
         return ProviderSettings.builder()
                 .issuer("http://auth-server:9000")
                 .build();
     }
+
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> oAuth2TokenCustomizer(){
+    public OAuth2TokenCustomizer<JwtEncodingContext> oAuth2TokenCustomizer() {
         return jwtEncodingContext -> {
-            if (jwtEncodingContext.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)){
+            if (jwtEncodingContext.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) {
                 Authentication principal = jwtEncodingContext.getPrincipal();
                 Set<String> roles = principal.getAuthorities()
                         .stream().map(GrantedAuthority::getAuthority)
                         .collect(Collectors.toSet());
 
 
-                jwtEncodingContext.getClaims().claim("roles",roles);
+                jwtEncodingContext.getClaims().claim("roles", roles);
             }
         };
     }

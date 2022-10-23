@@ -10,5 +10,8 @@ public interface UserService {
     User getUserWithRoleByUserName(String email) throws Exception;
 
     Boolean isExists();
+
     List<UserResponseDto> saveAll(Iterable<User> users);
+
+    UserResponseDto getUserByUserName(String name);
 }

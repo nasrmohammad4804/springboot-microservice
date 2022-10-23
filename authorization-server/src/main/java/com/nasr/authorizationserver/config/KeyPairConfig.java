@@ -6,6 +6,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -17,16 +18,25 @@ import java.util.UUID;
 @Configuration
 public class KeyPairConfig {
 
+    private static  KeyPair keyPair;
+
+    static {
+        try {
+            keyPair = generateRsaKey();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+    }
     @Bean
-    public JWKSource<SecurityContext> jwkSource() throws NoSuchAlgorithmException {
+    public  JWKSource<SecurityContext> jwkSource() throws NoSuchAlgorithmException {
         RSAKey rsaKey = generateRsa();
         JWKSet jwkSet = new JWKSet(rsaKey);
 
         return ((jwkSelector, context) -> jwkSelector.select(jwkSet));
     }
 
-    private RSAKey generateRsa() throws NoSuchAlgorithmException {
-        KeyPair keyPair = generateRsaKey();
+    private RSAKey generateRsa() {
+
         RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
         RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
 
@@ -36,9 +46,13 @@ public class KeyPairConfig {
                 .build();
     }
 
-    private KeyPair generateRsaKey() throws NoSuchAlgorithmException {
+    public static KeyPair generateRsaKey() throws NoSuchAlgorithmException {
         KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
         keyPairGenerator.initialize(2048);
         return keyPairGenerator.generateKeyPair();
+    }
+
+    public static KeyPair getKeyPair() {
+        return keyPair;
     }
 }
