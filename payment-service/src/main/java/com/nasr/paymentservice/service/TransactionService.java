@@ -9,5 +9,5 @@ public interface TransactionService extends BaseService<Long, PaymentResponse, P
 
     Mono<PaymentResponse> getByOrderId(Long orderId);
 
-    Mono<PaymentResponse> doPayment(PaymentRequest paymentRequest, String auth);
+    Mono<PaymentResponse> doPayment(PaymentRequest paymentRequest);
 }

@@ -35,8 +35,6 @@ public class ResourceServerConfig {
                 .authorizeExchange()
                 .pathMatchers("/v3/api-docs/**", "/webjars/**")
                 .permitAll()
-                .pathMatchers("/api/v1/payment/**")
-                .hasAuthority("SCOPE_internal")
                 .pathMatchers(HttpMethod.GET,"/**")
                 .hasAuthority("SCOPE_read")
                 .pathMatchers(HttpMethod.POST,"/**")

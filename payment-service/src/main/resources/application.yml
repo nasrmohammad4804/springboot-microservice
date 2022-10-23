@@ -15,6 +15,18 @@ spring:
         jwt:
           issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
 
+      client:
+        registration:
+          client-internal:
+            provider: spring
+            client-id: ecommerce-client
+            client-secret: ecommerce-secret
+            authorization-grant-type: client_credentials
+            scope: internal,read,write
+        provider:
+          spring:
+            issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+
   config:
     import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
 

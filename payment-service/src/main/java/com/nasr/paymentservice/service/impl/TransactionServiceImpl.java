@@ -24,7 +24,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @Service
@@ -48,14 +47,13 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
     }
 
 
-    private Mono<OrderResponse> completeOrder(Long orderId,String auth) {
+    private Mono<OrderResponse> completeOrder(Long orderId) {
 
         return webClientBuilder.build()
                 .put()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/order/completeOrderStatus/" + orderId)
                         .host("ORDER-SERVICE")
                         .build())
-                .header(AUTHORIZATION,auth)
                 .retrieve()
                 .onStatus(httpStatus -> httpStatus.isError() && !httpStatus.equals(SERVICE_UNAVAILABLE),clientResponse ->  clientResponse.bodyToMono(ErrorResponse.class)
                         .map(errorResponse -> new ExternalServiceException(errorResponse.message(),clientResponse.statusCode())))
@@ -72,7 +70,7 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
 
     @Override
     @CircuitBreaker(name = "orderService",fallbackMethod = "orderServiceFallback")
-    public Mono<PaymentResponse> doPayment(PaymentRequest paymentRequest, String auth) {
+    public Mono<PaymentResponse> doPayment(PaymentRequest paymentRequest) {
         // can pay order by third party service with cardNumber and cvv2 etc ...  we mocked this section
         //and if third party do payment and send response as ok with set paymentStatus as SUCCESS
         //after that we save transaction in db
@@ -95,21 +93,21 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         transaction.setStatus(status);
         transaction.setPaymentDate(LocalDateTime.now());
 
-        return completeOrder(paymentRequest.getOrderId(),auth)
+        return completeOrder(paymentRequest.getOrderId())
                 .flatMap(orderResponse -> repository.save(transaction))
                 .map(mapper::convertEntityToDto)
                 .doOnNext(tx -> log.info("payment was successfully and transaction id is : {} ", tx.getId()))
                 .log();
     }
 
-    private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest, String auth, CallNotPermittedException ex){
+    private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest, CallNotPermittedException ex){
 
 
         log.info("order service unAvailable !!!");
         return Mono.error(() -> new ExternalServiceException("order service un available !!!",SERVICE_UNAVAILABLE));
     }
-    private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest, String auth ,WebClientResponseException ex){
+    private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest ,WebClientResponseException ex){
         CallNotPermittedException callNotPermittedException = null;
-        return orderServiceFallback(paymentRequest,auth,callNotPermittedException);
+        return orderServiceFallback(paymentRequest,callNotPermittedException);
     }
 }
