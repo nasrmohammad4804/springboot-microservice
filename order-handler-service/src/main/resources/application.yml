@@ -8,6 +8,11 @@ spring:
   config:
     import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
 logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG

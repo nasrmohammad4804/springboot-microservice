@@ -9,6 +9,12 @@ spring:
     username: postgres
     password: MohammadN@sr13804804
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+
   config:
     import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
 

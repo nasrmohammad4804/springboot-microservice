@@ -12,6 +12,12 @@ spring:
     password: MohammadN@sr13804804
     url: r2dbc:postgresql://${DB_HOST:localhost}:5432/microservice-ecommerce?schema=product_schema
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+
 logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG
