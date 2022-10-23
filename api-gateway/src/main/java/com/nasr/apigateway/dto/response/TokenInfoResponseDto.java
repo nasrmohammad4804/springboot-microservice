@@ -1,5 +1,6 @@
 package com.nasr.apigateway.dto.response;
 
+import com.nasr.apigateway.external.response.UserResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,11 +14,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TokenInfoResponse {
+public class TokenInfoResponseDto {
 
-    private String userName;
+    private UserInfoResponseDto userInfo;
     private String accessToken;
     private String refreshToken;
     private Instant accessTokenExpireAt;
-    private List<String> authorities  =new ArrayList<>();
+    private List<String> authorities = new ArrayList<>();
 }

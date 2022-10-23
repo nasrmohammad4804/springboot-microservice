@@ -2,24 +2,23 @@ package com.nasr.apigateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactivefeign.spring.config.EnableReactiveFeignClients;
 import reactor.core.publisher.Mono;
-
-import java.security.Principal;
 
 @SpringBootApplication
 @EnableEurekaClient
-@RestController
+@EnableReactiveFeignClients
 public class ApiGatewayApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(ApiGatewayApplication.class, args);
+        ConfigurableApplicationContext context = SpringApplication.run(ApiGatewayApplication.class, args);
+
     }
 
     @Bean(name = "userKeyResolver")
@@ -30,6 +29,12 @@ public class ApiGatewayApplication {
 //
     KeyResolver userKeyResolver() {
         return exchange -> Mono.just("userKey");
+    }
+
+    @Bean
+    @LoadBalanced
+    public WebClient.Builder webClientBuilder(){
+        return WebClient.builder();
     }
 
 }
