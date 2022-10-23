@@ -65,6 +65,11 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     }
 
     @Override
+    public Mono<OrderResponse> saveOrUpdate(OrderRequest request) {
+        return placeOrder(request);
+    }
+
+    @Override
     @Transactional
     public Mono<Void> deleteById(Long id) {
         Mono<Void> orderDetail = orderDetailService.deleteOrderDetailByOrderId(id);
@@ -81,7 +86,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     }
 
     @CircuitBreaker(name = "orderHandlerService", fallbackMethod = "orderHandlerServiceFallback")
-    private Mono<JobDescriptorRequest> createOrderHandler(Tuple2<List<OrderDetailResponse>, Order> tuple2, String auth) {
+    private Mono<JobDescriptorRequest> createOrderHandler(Tuple2<List<OrderDetailResponse>, Order> tuple2) {
 
         TriggerDescriptorRequest triggerDescriptorRequest = TriggerDescriptorRequest.builder()
                 .hour(ORDER_HANDLER_DEFAULT_HOUR).build();
@@ -98,7 +103,6 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/orderPlaceHandler/groups/" + ORDER_HANDLER_GROUP_NAME + "/jobs")
                         .host("ORDER-HANDLER-SERVICE")
                         .build())
-                .header(AUTHORIZATION, auth)
                 .body(Mono.just(descriptorRequest), JobDescriptorRequest.class)
                 .retrieve()
                 .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)), clientResponse ->
@@ -128,13 +132,12 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .collect(Collectors.toMap(OrderDetailResponse::getProductId, OrderDetailResponse::getProductNumber));
     }
 
-    private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests, String auth) {
+    private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests) {
         return webClient.build()
                 .put()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/product/decreaseQuantity")
                         .host("PRODUCT-SERVICE")
                         .build())
-                .header(AUTHORIZATION, auth)
                 .body(Flux.fromIterable(decreaseProductQuantityRequests), DecreaseProductQuantityRequest.class)
                 .retrieve()
                 .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)),
@@ -187,7 +190,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     }
 
     @Override
-    public Flux<ProductResponse> getOrderPlacedProducts(Long orderId, String auth) {
+    public Flux<ProductResponse> getOrderPlacedProducts(Long orderId) {
         Flux<OrderDetailResponse> orderDetails = orderDetailService.getOrderDetailsByOrderId(orderId);
 
 
@@ -200,7 +203,6 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                                 .queryParam("id", productIds)
                                 .build()
                         )
-                        .header(AUTHORIZATION, auth)
                         .retrieve()
                         .bodyToFlux(ProductResponse.class)
                         .zipWith(orderDetails))
@@ -213,10 +215,10 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 
     @Override
     @Transactional
-    public Mono<OrderResponse> placeOrder(OrderRequest orderRequest, String auth) {
+    public Mono<OrderResponse> placeOrder(OrderRequest orderRequest) {
         log.info("placing order request: {} ", orderRequest);
 
-        return decreaseProductQuantity(getDecreaseProductQuantities(orderRequest.getOrderPlaceRequestDtoList()), auth)
+        return decreaseProductQuantity(getDecreaseProductQuantities(orderRequest.getOrderPlaceRequestDtoList()))
                 .flatMap(result -> {
                     Order order = Order.builder()
                             .orderDate(LocalDateTime.now())
@@ -234,7 +236,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 
                             });
 
-                }).flatMap(tuples2 -> createOrderHandler(tuples2, auth)
+                }).flatMap(tuples2 -> createOrderHandler(tuples2)
                         .single()
                         .map(jobDescriptorRequest -> {
                             log.info("sent job successfully to order handler service");

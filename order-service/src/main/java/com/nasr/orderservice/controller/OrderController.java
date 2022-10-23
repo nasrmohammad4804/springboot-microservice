@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -34,13 +35,15 @@ public class OrderController {
     private OrderService orderService;
 
     @PostMapping("/placeOrder")
-    public Mono<ResponseEntity<?>> placeOrder(@RequestBody @Valid OrderRequest orderRequest, ServerHttpRequest request) {
+    @PreAuthorize("hasRole('USER')")
+    public Mono<ResponseEntity<?>> placeOrder(@RequestBody @Valid OrderRequest orderRequest) {
 
-        return orderService.placeOrder(orderRequest, getAuth(request))
+        return orderService.saveOrUpdate(orderRequest)
                 .map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/cancelOrder/{orderId}")
+    @PreAuthorize("hasAuthority('SCOPE_internal')")
     public Mono<ResponseEntity<Void>> cancelOrder(@PathVariable Long orderId) {
         return orderService.deleteById(orderId)
                 .map(ResponseEntity::ok);
@@ -51,12 +54,12 @@ public class OrderController {
     @CircuitBreaker(name = "productService",fallbackMethod = "productServiceFallback")
     @TimeLimiter(name = "productService")
     @Retry(name = "productService")
-    public Flux<ProductResponse> getOrderPlaceProducts(@PathVariable("id") Long orderId,ServerHttpRequest request){
-        return  orderService.getOrderPlacedProducts(orderId,Oauth2TokenUtil.getAuth(request));
+    public Flux<ProductResponse> getOrderPlaceProducts(@PathVariable("id") Long orderId){
+        return  orderService.getOrderPlacedProducts(orderId);
     }
 
     // this is fallback method for product service
-    public Flux<ProductResponse> productServiceFallback(Long orderId , ServerHttpRequest request,Exception e){
+    public Flux<ProductResponse> productServiceFallback(Long orderId ,Exception e){
 
         return Flux.error(() -> new ExternalServiceException(
                 "product service unAvailable !",HttpStatus.SERVICE_UNAVAILABLE
@@ -64,6 +67,7 @@ public class OrderController {
     }
 
     @PutMapping("/completeOrderStatus/{id}")
+    @PreAuthorize("hasAuthority('SCOPE_internal')")
     public Mono<OrderResponse> completeOrderPlaceStatus(@PathVariable("id") Long orderId) {
         return orderService.completeOrderPlacedStatus(orderId);
     }
