@@ -1,10 +1,9 @@
-package com.nasr.apigateway.service;
+package com.nasr.apigateway.external.service;
 
 import com.nasr.apigateway.dto.response.UserInfoResponseDto;
-import com.nasr.apigateway.external.response.UserResponseDto;
 import reactor.core.publisher.Mono;
 
-public interface UserExternalService {
+public interface ExternalUserService {
 
     Mono<UserInfoResponseDto> getUser(String auth);
 }

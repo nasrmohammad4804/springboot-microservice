@@ -7,12 +7,17 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.nasr.apigateway.constant.ConstantField.TOKEN_PREFIX;
+
 public class Oauth2TokenUtil {
 
     public static List<String> extractAuthority(OAuth2User oAuth2User) {
-        return ((DefaultOidcUser) oAuth2User).getAuthorities()
-                .stream().filter(grantedAuthority -> grantedAuthority.getAuthority().startsWith("ROLE_"))
-                .map(GrantedAuthority::getAuthority)
+        return oAuth2User.getAuthorities()
+                .stream().map(GrantedAuthority::getAuthority)
+                .filter(authority -> authority.startsWith("ROLE_"))
                 .collect(Collectors.toList());
+    }
+    public static String getAuth(String token){
+        return TOKEN_PREFIX.concat(token);
     }
 }
