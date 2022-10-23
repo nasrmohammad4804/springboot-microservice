@@ -7,12 +7,7 @@ eureka:
     fetch-registry: true
     register-with-eureka: true
 
-spring:
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+
   zipkin:
     base-url: ${ZIPKIN_SERVER_URI:http://localhost:9411/}
 
