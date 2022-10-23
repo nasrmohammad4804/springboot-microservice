@@ -8,12 +8,10 @@ import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactivefeign.spring.config.EnableReactiveFeignClients;
 import reactor.core.publisher.Mono;
 
 @SpringBootApplication
 @EnableEurekaClient
-@EnableReactiveFeignClients
 public class ApiGatewayApplication {
 
     public static void main(String[] args) {
