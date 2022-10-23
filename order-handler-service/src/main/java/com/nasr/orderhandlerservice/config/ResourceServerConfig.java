@@ -30,6 +30,8 @@ public class ResourceServerConfig {
                 .hasAuthority("SCOPE_write")
                 .pathMatchers(HttpMethod.PUT,"/**")
                 .hasAuthority("SCOPE_write")
+                .pathMatchers("/api/v1/orderPlaceHandler/**")
+                .hasAuthority("SCOPE_internal")
                 .anyExchange()
                 .authenticated()
                 .and()

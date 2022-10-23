@@ -13,6 +13,19 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+
+      client:
+        registration:
+          client-internal:
+              client-id: ecommerce-client
+              client-secret: ecommerce-secret
+              authorization-grant-type: client_credentials
+              scope: read,write,internal
+              provider: cusom-auth
+        provider:
+          cusom-auth:
+            issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+
 logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG
