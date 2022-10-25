@@ -19,6 +19,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
@@ -107,6 +108,10 @@ public class TransactionServiceImpl extends BaseServiceImpl<Transaction, Long, T
         return Mono.error(() -> new ExternalServiceException("order service un available !!!",SERVICE_UNAVAILABLE));
     }
     private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest ,WebClientResponseException ex){
+        CallNotPermittedException callNotPermittedException = null;
+        return orderServiceFallback(paymentRequest,callNotPermittedException);
+    }
+    private Mono<PaymentResponse> orderServiceFallback(PaymentRequest paymentRequest , WebClientRequestException ex){
         CallNotPermittedException callNotPermittedException = null;
         return orderServiceFallback(paymentRequest,callNotPermittedException);
     }
