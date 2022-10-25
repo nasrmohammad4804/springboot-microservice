@@ -65,6 +65,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     }
 
     @Override
+    @Transactional
     public Mono<OrderResponse> saveOrUpdate(OrderRequest request) {
         return placeOrder(request);
     }
