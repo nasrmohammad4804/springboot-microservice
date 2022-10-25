@@ -34,13 +34,21 @@ public class GatewayLoginController {
 
         Mono<UserInfoResponseDto> userResponse = externalUserService.getUser(getAuth(jwtToken));
 
-        return userResponse.map(userResponseData -> TokenInfoResponseDto.builder()
-                .userInfo(userResponseData)
+        TokenInfoResponseDto tokenInfo = TokenInfoResponseDto.builder()
                 .accessToken(client.getAccessToken().getTokenValue())
-                .refreshToken(Objects.requireNonNull(client.getRefreshToken()).getTokenValue())
+                .refreshToken(client.getRefreshToken().getTokenValue())
                 .accessTokenExpireAt(client.getAccessToken().getExpiresAt())
                 .authorities(extractAuthority(user))
-                .build());
+                .build();
 
+        return Mono.just(tokenInfo)
+                .zipWith(userResponse)
+                .map(tuple -> {
+                    TokenInfoResponseDto tokenInfoResponseDto = tuple.getT1();
+                    UserInfoResponseDto userInfoResponseDto = tuple.getT2();
+                    tokenInfoResponseDto.setUserInfo(userInfoResponseDto);
+                    return tokenInfoResponseDto;
+                })
+                .log();
     }
 }

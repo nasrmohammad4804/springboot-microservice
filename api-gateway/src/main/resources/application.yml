@@ -113,7 +113,15 @@ resilience4j:
         baseConfig: default
       paymentService:
         baseConfig: default
-
+      authorizationServer:
+        baseConfig: default
+  retry:
+    instances:
+      authorizationServer:
+        maxAttempts: 3
+        waitDuration: 2500ms
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
   timelimiter:
     instances:
 #      we specify if request after 2 second don't process and send response consider as failure in circuit breaker
