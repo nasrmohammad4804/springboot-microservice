@@ -20,4 +20,8 @@ public abstract class BaseEntity<ID extends Serializable> implements Serializabl
 
     @Transient
     protected Boolean isDeleted;
+
+    public BaseEntity(ID id) {
+        this.id = id;
+    }
 }

@@ -89,9 +89,9 @@ public class ProductServiceImpl extends BaseServiceImpl<Product, ProductResponse
                 .collect(Collectors.toList());
 
         List<Long> revertProductIds = revertProductRequests.stream()
-                .map(DecreaseProductQuantityRequest::getProductId).toList();
+                .map(RevertProductRequest::getProductId).toList();
 
-        return repository.findAllById(revertProductIds, Sort.by("id"))
+        return repository.findAllById(revertProductIds)
                 .onErrorMap(e -> new ProductNotFoundException("you have invalid product id !!! "))
                 .zipWithIterable(revertProductRequests)
                 .flatMap(tuples2 -> {

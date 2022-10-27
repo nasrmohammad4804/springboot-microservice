@@ -13,6 +13,4 @@ public interface ProductRepository extends ReactiveCrudRepository<Product, Long>
     @Query("select count(p.id)>0 from product_table as p where p.name = :name ")
     Mono<Boolean> isExistsByName(String name);
 
-    @Query("select p.* from product_table as p where p.id in ( :ids ) order by p.id asc ")
-    Flux<Product> findAllById(@Param("ids") Iterable<Long> ids, Sort sort);
 }

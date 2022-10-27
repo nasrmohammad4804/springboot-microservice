@@ -25,4 +25,11 @@ public class Product extends BaseEntity<Long> {
         this.quantity = quantity;
         this.price = price;
     }
+
+    public Product(Long id, String name, Long quantity, Double price) {
+        super(id);
+        this.name = name;
+        this.quantity = quantity;
+        this.price = price;
+    }
 }
