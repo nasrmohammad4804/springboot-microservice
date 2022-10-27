@@ -1,4 +1,4 @@
-package com.nasr.service;
+package com.nasr.productservice.service;
 
 import com.nasr.productservice.domain.Product;
 import com.nasr.productservice.dto.request.DecreaseProductQuantityRequest;
