@@ -17,8 +17,10 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
-
 logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG
     io.r2dbc.postgresql.PARAM: DEBUG
+eureka:
+  client:
+    enabled: false
