@@ -6,4 +6,8 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 public class DecreaseProductQuantityRequest extends OrderPlaceRequest {
+
+    public DecreaseProductQuantityRequest(Long productId, Long productNumber) {
+        super(productId, productNumber);
+    }
 }

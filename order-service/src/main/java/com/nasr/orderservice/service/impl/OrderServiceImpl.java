@@ -22,7 +22,6 @@ import com.nasr.orderservice.service.OrderService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreaker;
 import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreakerFactory;
 import org.springframework.http.HttpStatus;
@@ -42,7 +41,6 @@ import java.util.stream.Collectors;
 
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_DEFAULT_HOUR;
 import static com.nasr.orderservice.constant.ConstantField.ORDER_HANDLER_GROUP_NAME;
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 
 @Service
 @Transactional(readOnly = true)
@@ -54,14 +52,15 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
 
     private final ReactiveCircuitBreakerFactory reactiveCircuitBreakerFactory;
 
-    @Autowired
-    private WebClient.Builder webClient;
+    private final WebClient.Builder webClient;
 
     public OrderServiceImpl(OrderRepository repository, BaseMapper<Order, OrderResponse, OrderRequest> mapper,
-                            OrderDetailService orderDetailService, ReactiveCircuitBreakerFactory reactiveCircuitBreakerFactory) {
+                            OrderDetailService orderDetailService, ReactiveCircuitBreakerFactory reactiveCircuitBreakerFactory,
+                            WebClient.Builder webClient) {
         super(repository, mapper);
         this.orderDetailService = orderDetailService;
         this.reactiveCircuitBreakerFactory = reactiveCircuitBreakerFactory;
+        this.webClient = webClient;
     }
 
     @Override
@@ -87,7 +86,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     }
 
     @CircuitBreaker(name = "orderHandlerService", fallbackMethod = "orderHandlerServiceFallback")
-    private Mono<JobDescriptorRequest> createOrderHandler(Tuple2<List<OrderDetailResponse>, Order> tuple2) {
+    private Mono<Object> createOrderHandler(Tuple2<List<OrderDetailResponse>, Order> tuple2) {
 
         TriggerDescriptorRequest triggerDescriptorRequest = TriggerDescriptorRequest.builder()
                 .hour(ORDER_HANDLER_DEFAULT_HOUR).build();
@@ -104,11 +103,11 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/orderPlaceHandler/groups/" + ORDER_HANDLER_GROUP_NAME + "/jobs")
                         .host("ORDER-HANDLER-SERVICE")
                         .build())
-                .body(Mono.just(descriptorRequest), JobDescriptorRequest.class)
+                .body(descriptorRequest, JobDescriptorRequest.class)
                 .retrieve()
                 .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)), clientResponse ->
                         Mono.error(() -> new ExternalServiceException("error occurred for create job on order handler service ", clientResponse.statusCode())))
-                .bodyToMono(JobDescriptorRequest.class)
+                .bodyToMono(Object.class)
                 .transform(it -> {
                     ReactiveCircuitBreaker circuitBreaker = reactiveCircuitBreakerFactory.create("orderHandlerService");
                     return circuitBreaker.run(it, Mono::error);
@@ -133,18 +132,18 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .collect(Collectors.toMap(OrderDetailResponse::getProductId, OrderDetailResponse::getProductNumber));
     }
 
-    private Mono<Boolean> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests) {
+    private Mono<Object> decreaseProductQuantity(List<DecreaseProductQuantityRequest> decreaseProductQuantityRequests) {
         return webClient.build()
                 .put()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/product/decreaseQuantity")
                         .host("PRODUCT-SERVICE")
                         .build())
-                .body(Flux.fromIterable(decreaseProductQuantityRequests), DecreaseProductQuantityRequest.class)
+                .body(decreaseProductQuantityRequests, DecreaseProductQuantityRequest.class)
                 .retrieve()
                 .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)),
                         clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)
                                 .map(error -> new ExternalServiceException(error.getMessage(), clientResponse.statusCode())))
-                .bodyToMono(Boolean.class)
+                .bodyToMono(Object.class)
                 .transform(it -> {
                     ReactiveCircuitBreaker circuitBreaker = reactiveCircuitBreakerFactory.create("productService");
                     return circuitBreaker.run(it, Mono::error);
@@ -194,7 +193,6 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
     public Flux<ProductResponse> getOrderPlacedProducts(Long orderId) {
         Flux<OrderDetailResponse> orderDetails = orderDetailService.getOrderDetailsByOrderId(orderId);
 
-
         return orderDetails.map(OrderDetailResponse::getProductId)
                 .collectList()
                 .flatMapMany(productIds -> webClient.build()
@@ -238,7 +236,6 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                             });
 
                 }).flatMap(tuples2 -> createOrderHandler(tuples2)
-                        .single()
                         .map(jobDescriptorRequest -> {
                             log.info("sent job successfully to order handler service");
                             return mapper.convertEntityToDto(tuples2.getT2());

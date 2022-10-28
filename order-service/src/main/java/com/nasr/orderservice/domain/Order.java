@@ -31,5 +31,10 @@ public class Order extends BaseEntity<Long> {
     @Column(value = ORDER_STATUS)
     private String orderStatus;
 
-
+    public Order(Long id, LocalDateTime orderDate, Double totalPrice, String orderStatus) {
+        super(id);
+        this.orderDate = orderDate;
+        this.totalPrice = totalPrice;
+        this.orderStatus = orderStatus;
+    }
 }

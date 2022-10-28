@@ -1,0 +1,44 @@
+
+spring:
+  application:
+    name: ORDER-SERVICE
+  r2dbc:
+    url: r2dbc:h2:mem:///orderdb
+    username: user
+    password: 1111
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+#   dont need to configure oauth2 client because connection to external service mocked via wiremock
+      client:
+        registration:
+          client-internal:
+            provider: spring
+            client-id: ecommerce-client
+            client-secret: ecommerce-secret
+            authorization-grant-type: client_credentials
+            scope: internal,read,write
+
+        provider:
+          spring:
+            issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
+
+  zipkin:
+    enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+# we don't user resilience and circuit breaker because we dont call another service and we use wiremock
+
+logging:
+  level:
+    io.r2dbc.postgresql.QUERY: DEBUG
+    io.r2dbc.postgresql.PARAM: DEBUG
