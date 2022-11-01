@@ -103,7 +103,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/orderPlaceHandler/groups/" + ORDER_HANDLER_GROUP_NAME + "/jobs")
                         .host("ORDER-HANDLER-SERVICE")
                         .build())
-                .body(descriptorRequest, JobDescriptorRequest.class)
+                .body(Mono.just(descriptorRequest), JobDescriptorRequest.class)
                 .retrieve()
                 .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)), clientResponse ->
                         Mono.error(() -> new ExternalServiceException("error occurred for create job on order handler service ", clientResponse.statusCode())))
@@ -138,7 +138,7 @@ public class OrderServiceImpl extends BaseServiceImpl<Order, Long, OrderReposito
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/product/decreaseQuantity")
                         .host("PRODUCT-SERVICE")
                         .build())
-                .body(decreaseProductQuantityRequests, DecreaseProductQuantityRequest.class)
+                .body(Flux.fromIterable(decreaseProductQuantityRequests), DecreaseProductQuantityRequest.class)
                 .retrieve()
                 .onStatus(httpStatus -> (httpStatus.isError() && !HttpStatus.SERVICE_UNAVAILABLE.equals(httpStatus)),
                         clientResponse -> clientResponse.bodyToMono(ErrorResponse.class)

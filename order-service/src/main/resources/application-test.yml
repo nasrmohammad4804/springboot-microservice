@@ -12,7 +12,7 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
-#   dont need to configure oauth2 client because connection to external service mocked via wiremock
+      #   dont need to configure oauth2 client because connection to external service mocked via wiremock
       client:
         registration:
           client-internal:
@@ -21,6 +21,7 @@ spring:
             client-secret: ecommerce-secret
             authorization-grant-type: client_credentials
             scope: internal,read,write
+
 
         provider:
           spring:
@@ -32,9 +33,6 @@ spring:
   zipkin:
     enabled: false
 
-eureka:
-  client:
-    enabled: false
 
 # we don't user resilience and circuit breaker because we dont call another service and we use wiremock
 
@@ -42,3 +40,10 @@ logging:
   level:
     io.r2dbc.postgresql.QUERY: DEBUG
     io.r2dbc.postgresql.PARAM: DEBUG
+
+wiremock-server:
+  port: 6060
+  host: ${WIREMOCK_SERVER:localhost}
+eureka:
+  client:
+    enabled: false

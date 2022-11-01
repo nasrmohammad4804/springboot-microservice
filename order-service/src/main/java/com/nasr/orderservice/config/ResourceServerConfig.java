@@ -28,9 +28,6 @@ import static com.nasr.orderservice.constant.ConstantField.SCOPE_PREFIX;
 @EnableReactiveMethodSecurity
 public class ResourceServerConfig {
 
-    @Autowired
-    ReactiveOAuth2AuthorizedClientManager authorizedClientManager;
-
     @Bean
     public SecurityWebFilterChain webFilterChain(ServerHttpSecurity http) {
 

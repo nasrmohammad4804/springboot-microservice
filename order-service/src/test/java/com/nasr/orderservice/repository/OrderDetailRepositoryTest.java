@@ -4,6 +4,7 @@ import com.nasr.orderservice.domain.OrderDetail;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
+import org.springframework.test.context.ActiveProfiles;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -12,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataR2dbcTest
 @TestInstance(value = TestInstance.Lifecycle.PER_CLASS)
+@ActiveProfiles("test")
 class OrderDetailRepositoryTest {
 
     @Autowired
