@@ -19,9 +19,12 @@ import com.nasr.orderservice.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.Answers;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreaker;
+import org.reactivestreams.Publisher;
 import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreakerFactory;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -55,7 +58,7 @@ class OrderServiceImplTest {
     @Mock
     private OrderDetailService orderDetailService;
 
-    @Mock
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private ReactiveCircuitBreakerFactory circuitBreakerFactory;
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
@@ -63,32 +66,13 @@ class OrderServiceImplTest {
 
     private OrderService underTest;
 
-    private WebClient.RequestHeadersUriSpec requestHeadersUriMock;
-    private WebClient.RequestHeadersSpec requestHeadersMock;
-    private WebClient.RequestBodyUriSpec requestBodyUriMock;
-    private WebClient.RequestBodySpec requestBodyMock;
-    private WebClient.ResponseSpec responseMock;
-    private ReactiveCircuitBreaker circuitBreaker;
-    private WebClient webClientMock;
 
-    private void initializeWebclient() {
-        webClientMock = mock(WebClient.class);
-        responseMock = mock(WebClient.ResponseSpec.class);
-        requestBodyMock = mock(WebClient.RequestBodySpec.class);
-        requestBodyUriMock = mock(WebClient.RequestBodyUriSpec.class);
-        requestHeadersMock = mock(WebClient.RequestHeadersSpec.class);
-        requestHeadersUriMock = mock(WebClient.RequestHeadersUriSpec.class);
-    }
 
     @BeforeEach
     void setup() {
         underTest = new OrderServiceImpl(
                 repository, mapper, orderDetailService, circuitBreakerFactory, webClient
         );
-
-        initializeWebclient();
-        circuitBreaker = mock(ReactiveCircuitBreaker.class);
-
     }
 
     @Test
@@ -241,36 +225,23 @@ class OrderServiceImplTest {
         OrderRequest request = getMockOrderPlaceRequest();
 
         // when
-
-
-        given(webClient.build()).willReturn(webClientMock);
-        given(webClientMock.put()).willReturn(requestBodyUriMock);
-        given(requestBodyUriMock.uri(any(Function.class))).willReturn(requestBodyMock);
-
-        given(requestBodyMock.body(getDecreaseProductRequest(request), DecreaseProductQuantityRequest.class))
-                .willReturn(requestHeadersMock);
-
         Mono<Object> decreaseProductQuantitiesResult = Mono.just(Boolean.TRUE);
+        given(
+                webClient.build().put().uri(any(Function.class)).body(any(Publisher.class), (Class<?>) any(Object.class))
+                        .retrieve()
+                        .onStatus(any(Predicate.class),any(Function.class))
+                        .bodyToMono(Object.class)
+        )
+                .willReturn(decreaseProductQuantitiesResult);
 
-        given(requestHeadersMock.retrieve()).willReturn(responseMock);
-        given(responseMock.onStatus(any(Predicate.class), any(Function.class))).willReturn(responseMock);
-        when(responseMock.bodyToMono(Object.class)).thenReturn(decreaseProductQuantitiesResult).thenReturn(getMockJobDescriptorRequest());
-
-        given(circuitBreakerFactory.create(anyString())).willReturn(circuitBreaker);
-        lenient().when(circuitBreaker.run(any(Mono.class), any(Function.class)))
-                .thenReturn(decreaseProductQuantitiesResult);
+        lenient().when(circuitBreakerFactory.create(anyString()).run(any(Mono.class), any(Function.class)))
+                .thenReturn(Mono.just(Boolean.TRUE));
 
         Order mockOrder = getMockOrder();
         given(repository.save(any())).willReturn(Mono.just(mockOrder));
 
         given(orderDetailService.saveAll(anyCollection()))
                 .willReturn(getMockOrderDetailResponse());
-
-        given(webClientMock.post()).willReturn(requestBodyUriMock);
-
-        JobDescriptorRequest descriptorRequest = any(JobDescriptorRequest.class);
-        given(requestBodyMock.body(descriptorRequest, eq(JobDescriptorRequest.class)))
-                .willReturn(requestHeadersMock);
 
         ArgumentCaptor<Order> orderCapture = ArgumentCaptor.forClass(Order.class);
 
@@ -289,6 +260,7 @@ class OrderServiceImplTest {
 
         Order captureValue = orderCapture.getValue();
         assertThat(captureValue).isEqualToComparingFieldByField(mockOrder);
+
     }
 
     private OrderResponse getMockOrderResponse() {
