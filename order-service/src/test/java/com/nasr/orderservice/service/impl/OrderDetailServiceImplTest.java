@@ -7,6 +7,7 @@ import com.nasr.orderservice.mapper.OrderDetailMapper;
 import com.nasr.orderservice.repository.OrderDetailRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -40,6 +41,7 @@ class OrderDetailServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test for get order detail by order id ")
     void itShouldGetOrderDetailsByOrderId() {
         // given
         Long orderId = 1L;
@@ -60,6 +62,7 @@ class OrderDetailServiceImplTest {
 
 
     }@Test
+    @DisplayName("this unit test must throw not found exception because when get orderDetail by order need to exists order")
     void itShouldThrowNotFoundExceptionOnGetOrderDetailsByOrderIdWhenOrderIdNotValid() {
 
         // given
@@ -91,7 +94,9 @@ class OrderDetailServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test for delete all order detail by order id from db")
     void itShouldDeleteOrderDetailByOrderId() {
+
         // given
         Long orderId = 1L;
 

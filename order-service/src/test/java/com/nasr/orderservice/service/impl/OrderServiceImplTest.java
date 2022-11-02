@@ -17,6 +17,7 @@ import com.nasr.orderservice.repository.OrderRepository;
 import com.nasr.orderservice.service.OrderDetailService;
 import com.nasr.orderservice.service.OrderService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
@@ -76,6 +77,7 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test for delete order by specific id when ever order cancelled")
     void itShouldDeleteById() {
 
         // given
@@ -102,6 +104,7 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit for check get error when want to delete order but order id is null")
     void itShouldNotDeleteByIdAndThrowExceptionWhenIdIsNull() {
 
         // given
@@ -126,6 +129,7 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test must change order status from NEW to COMPLETED when payment is success")
     void itShouldCompleteOrderPlacedStatus() {
 
         // given
@@ -150,6 +154,7 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test for handle when we want to complete order but order id is not valid then it will be taken error")
     void itShouldThrowExceptionOnCompleteOrderPlacedStatusWhenOrderIdNotValid() {
 
         // given
@@ -176,6 +181,8 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test for handle when we want to get all ordered product by order id" +
+            " but order id not found then expected take not found error ")
     void itShouldNotGetOrderPlacedProductsWhenOrderIdNotExists() {
         // given
         final Long orderId = 1L;
@@ -191,7 +198,9 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test for scenario get ordered product successfully")
     void itShouldGetOrderPlacedProducts() {
+
         // given
         final Long orderId = 1L;
 
@@ -220,6 +229,7 @@ class OrderServiceImplTest {
     }
 
     @Test
+    @DisplayName("this unit test for save customer  order place ")
     void itShouldPlaceOrder() {
         // given
         OrderRequest request = getMockOrderPlaceRequest();

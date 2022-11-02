@@ -13,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataR2dbcTest
 @TestInstance(value = TestInstance.Lifecycle.PER_CLASS)
-@ActiveProfiles("test")
 class OrderDetailRepositoryTest {
 
     @Autowired

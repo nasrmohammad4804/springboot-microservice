@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 @Getter
 @Setter
 @Component
-@Profile("test")
 @ConfigurationProperties(prefix = "wiremock-server")
 public class WireMockConfig {
 
