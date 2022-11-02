@@ -1,0 +1,15 @@
+{
+  "name": "mc231v?>tRXL'@y&9",
+  "orderId": 1,
+  "productInfo": {
+    "1": 3,
+    "2": 5
+  },
+  "triggers": [
+    {
+      "name": "order_trigger",
+      "group": "test",
+      "hour": 1
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+[
+  {"id": 1,"name": "iphone" , "quantity" :  23, "price" : 46000000 },
+  {"id": 2,"name": "handsFree" , "quantity" :  14, "price" : 230000 },
+  {"id": 3,"name": "logitech mouse" , "quantity" :  16, "price" : 350000 }
+]

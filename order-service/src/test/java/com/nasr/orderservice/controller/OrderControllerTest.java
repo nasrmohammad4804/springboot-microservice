@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
-import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.nasr.orderservice.config.ProjectConfig;
 import com.nasr.orderservice.config.WireMockConfig;
@@ -13,8 +12,6 @@ import com.nasr.orderservice.domain.enumeration.OrderStatus;
 import com.nasr.orderservice.dto.request.OrderPlaceRequest;
 import com.nasr.orderservice.dto.request.OrderRequest;
 import com.nasr.orderservice.dto.response.OrderResponse;
-import com.nasr.orderservice.external.request.JobDescriptorRequest;
-import com.nasr.orderservice.external.response.ProductResponse;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,13 +29,10 @@ import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.TEXT_EVENT_STREAM;
 import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt;
@@ -86,7 +80,7 @@ public class OrderControllerTest {
 
     }
 
-    private void getOrderProductRequest() throws JsonProcessingException {
+    private void getOrderProductRequest()  {
 
         registry.circuitBreaker("productService").reset();
 
@@ -94,37 +88,18 @@ public class OrderControllerTest {
                 get(urlMatching("/api/v1/product/all.*")).willReturn(ResponseDefinitionBuilder.responseDefinition()
                         .withStatus(HttpStatus.OK.value())
                         .withHeader("Content-Type", MediaType.TEXT_EVENT_STREAM_VALUE)
-                        .withBody(getMockOrderProductResponse()))
+                                .withBodyFile("path/json/OrderProductResponses.json"))
         );
     }
 
-    private String getMockOrderProductResponse() throws JsonProcessingException {
-        List<ProductResponse> productResponses = Arrays.asList(
-                new ProductResponse(1L, "iphone", 23L, 46000000D),
-                new ProductResponse(2L, "handsFree", 14L, 230000D),
-                new ProductResponse(3L, "logitech mouse", 16L, 350000D)
-        );
-        return mapper.writeValueAsString(productResponses);
-    }
-
-    private void orderHandlerJobRequest() throws JsonProcessingException {
+    private void orderHandlerJobRequest()  {
 
         registry.circuitBreaker("orderHandlerService").reset();
 
         wireMockServer.stubFor(post("/api/v1/orderPlaceHandler/groups/order-handler/jobs")
                 .willReturn(ResponseDefinitionBuilder.responseDefinition()
                         .withHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                        .withBody(getMockOrderHandlerResponse())));
-    }
-
-    private String getMockOrderHandlerResponse() throws JsonProcessingException {
-        Object request = JobDescriptorRequest
-                .builder()
-                .orderId(1L)
-                .triggers(new ArrayList<>())
-                .build();
-
-        return mapper.writeValueAsString(request);
+                        .withBodyFile("path/json/OrderHandlerJobResponse.json")));
     }
 
     private String getMockDecreaseProductQuantitiesResult() throws JsonProcessingException {
