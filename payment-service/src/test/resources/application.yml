@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: PAYMENT-SERVICE
+  r2dbc:
+    url: r2dbc:h2:mem:///paymentdb
+    username: user
+    password: 1111
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTHORIZATION_SERVER_URI:http://auth-server:9000}
+      #   dont need to configure oauth2 client because connection to external service mocked via wiremock
+
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}
+
+  zipkin:
+    enabled: false
+
+  profiles:
+    default: test
+
+# we don't user resilience and circuit breaker because we dont call another service and we use wiremock
+
+logging:
+  level:
+    io.r2dbc.postgresql.QUERY: DEBUG
+    io.r2dbc.postgresql.PARAM: DEBUG
+
+wiremock-server:
+  port: 5050
+  host: ${WIREMOCK_SERVER:localhost}
+eureka:
+  client:
+    enabled: false

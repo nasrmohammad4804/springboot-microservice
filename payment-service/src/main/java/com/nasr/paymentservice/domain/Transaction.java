@@ -17,7 +17,7 @@ import static com.nasr.paymentservice.domain.Transaction.TABLE_NAME;
 @AllArgsConstructor
 @Table(TABLE_NAME)
 @Builder
-public class Transaction extends BaseEntity<Long> {
+public class Transaction extends BaseEntity<Long> implements Cloneable {
 
     public static final String ORDER_ID = "order_id";
     public static final String TABLE_NAME = "transaction_table";
@@ -36,4 +36,9 @@ public class Transaction extends BaseEntity<Long> {
 
     @Column(value = ORDER_ID)
     private Long orderId;
+
+    @Override
+    public Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
 }
