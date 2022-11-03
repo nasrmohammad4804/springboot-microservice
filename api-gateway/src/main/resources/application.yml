@@ -87,8 +87,11 @@ spring:
                 redis-rate-limiter.replenishRate: 100
                 redis-rate-limiter.burstCapacity: 100
   redis:
-    port: 6379
-    host: localhost
+    port: ${REDIS_SERVER_PORT:6379}
+    host: ${REDIS_SERVER_HOST:localhost}
+
+  session:
+    store-type: redis
 
 
 server:
